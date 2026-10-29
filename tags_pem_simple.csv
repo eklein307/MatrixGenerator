@@ -1,0 +1,13 @@
+Tag,Description,Type,Access,Hi,Lo,Units,Allowed,Default,Notes
+TEMP_CELL_SP,Cell temperature set point,Analog,Write,90,20,degC,,25,Ramp no faster than 2 degC/min
+TEMP_CELL_FB,Measured cell temperature,Analog,Read,120,0,degC,,,Feedback for TEMP_CELL_SP
+ANODE_FLOW_REQ,Anode H2 flow set point,Analog,Write,2,0,slpm,,0,
+CATHODE_FLOW_REQ,Cathode air flow set point,Analog,Write,5,0,slpm,,0,
+LB_ENBL,Load bank enable,Discrete,Write,,,,,OFF,Only turn ON when ANODE_FLOW_REQ and CATHODE_FLOW_REQ are above 0
+LB_MODE,Load bank control mode,Discrete,Write,,,,V|C,V,V = hold voltage (LB_VOLTAGE_SP); C = hold current (LB_CURRENT_DENSITY_SP)
+LB_VOLTAGE_SP,Cell voltage set point,Analog,Write,1.0,0.3,V,,0.9,Used when LB_MODE = V
+LB_CURRENT_DENSITY_SP,Current density set point,Analog,Write,1.5,0,A/cm2,,0,Used when LB_MODE = C
+LB_VOLTAGE_FB,Measured cell voltage,Analog,Read,1.2,-0.5,V,,,
+MATRIX_COMMENT,Step label written to the data log,String,Write,,,,,,
+CountA,Loop counter,Analog,Variable,1000,0,,,1,For/Next index
+CountB,Inner loop counter,Analog,Variable,1000,0,,,1,For/Next index for loops nested inside a PostStep
