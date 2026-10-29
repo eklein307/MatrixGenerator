@@ -1,0 +1,39 @@
+{
+  "script_name": "Flow Cycling 60C",
+  "notes": [
+    "Temperature changes use a 1200 s ramp (40 degC at the 2 degC/min limit from temp_sp Notes).",
+    "valve_1 is opened in its own row before flow_sp goes above 0, to satisfy the valve interlock.",
+    "Stability check: temp_fb within 0.5 degC of temp_sp for 120 s, with a 1800 s timeout. Adjust Range/Set Time if your cell needs tighter control.",
+    "Flow cycling uses a matrix loop on CountA (1 to 5): 120 s at 1 slpm, then 120 s at 3 slpm.",
+    "lb_mode and avg_now are not needed for this test and are left unchanged."
+  ],
+  "pretest": [
+    {"type": "Update", "comment": "Known starting state", "fields": [["Duration", 2], ["save_name", "FlowCycle60C"], ["valve_1", "OFF"], ["flow_sp", 0], ["temp_sp", 20], ["CountA", 1]]}
+  ],
+  "matrix": {
+    "tags": ["temp_sp", "valve_1", "flow_sp"],
+    "rows": [
+      {"header": "Warm-up"},
+      {"comment": "Open valve (flow still 0)", "duration": 10, "ramp": 0, "values": {"temp_sp": 20, "valve_1": "ON", "flow_sp": 0}},
+      {"comment": "Set flow to 2 slpm", "duration": 30, "ramp": 0, "values": {"flow_sp": 2}},
+      {"comment": "Ramp cell to 60 C at 2 C/min, then wait until stable", "duration": 30, "ramp": 1200, "poststep": "Wait for temp stable", "values": {"temp_sp": 60}},
+      {"header": "Flow cycling: 5 cycles, 1 / 3 slpm, 2 min each"},
+      {"loop": "For CountA = 1 to 5"},
+      {"comment": "Flow 1 slpm", "duration": 120, "ramp": 0, "values": {"flow_sp": 1}},
+      {"comment": "Flow 3 slpm", "duration": 120, "ramp": 0, "values": {"flow_sp": 3}},
+      {"loop": "Next CountA"},
+      {"header": "Return to defaults"},
+      {"comment": "Stop flow", "duration": 10, "ramp": 0, "values": {"flow_sp": 0}},
+      {"comment": "Close valve", "duration": 5, "ramp": 0, "values": {"valve_1": "OFF"}},
+      {"comment": "Cool to 20 C at 2 C/min", "duration": 30, "ramp": 1200, "values": {"temp_sp": 20}}
+    ]
+  },
+  "poststeps": [
+    {"name": "Wait for temp stable", "steps": [
+      {"type": "Wait Til Settled", "fields": [["MODE", "AND"], ["Duration", 1800], ["Condition", "Stable"], ["Tag Value", "temp_fb"], ["Setpoint", "$temp_sp"], ["Range", 0.5], ["Set Time", 120]]}
+    ]}
+  ],
+  "posttest": [
+    {"type": "Update", "comment": "Safe state (tag defaults)", "fields": [["Duration", 2], ["flow_sp", 0], ["valve_1", "OFF"], ["temp_sp", 20]]}
+  ]
+}

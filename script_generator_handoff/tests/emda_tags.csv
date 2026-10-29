@@ -1,0 +1,10 @@
+Tag,Description,Type,Access,Hi,Lo,Units,Allowed,Default,Notes
+POV-102,Cell 1 valve,Discrete,Write,,,,,OFF,
+POV-202,Cell 2 valve,Discrete,Write,,,,,OFF,
+Logging,Logging on/off,Discrete,Write,,,,,On,
+Logger_Rate_(Sec),Logger rate,Analog,Write,600,1,s,,30,
+CSV_Log_Rate,CSV log rate,Analog,Write,600,1,s,,30,
+AVG_MINS,Averaging window,Analog,Write,60,1,min,,1,
+MATRIX_COMMENT,Log label,String,Write,,,,,,
+CountA,Loop counter,Analog,Variable,10000,0,,,1,
+temp_fb,Temp,Analog,Read,200,0,C,,,

@@ -1,0 +1,5 @@
+Tag,Description,Type,Hi,Lo,Default,
+temp_sp,Cell temp set point,Analog,110,15,20,
+flow_sp,MFC flow set point,Analog,5,0,0,
+valve_1,MFC valve,Discrete,,,OFF,
+save_name,Data file prefix,String,,,Sample,

@@ -1,0 +1,9 @@
+Tag,Description,Type,Access,Hi,Lo,Units,Allowed,Default,Notes
+temp_sp,Cell temperature set point,Analog,Write,110,15,degC,,20,Ramp no faster than 2 degC/min
+temp_fb,Measured cell temperature,Analog,Read,150,0,degC,,,Feedback for temp_sp; use in Wait Til / Wait Til Settled
+flow_sp,MFC flow set point,Analog,Write,5,0,slpm,,0,
+valve_1,MFC isolation valve,Discrete,Write,,,,,OFF,Must be ON before flow_sp > 0
+lb_mode,Load bank control mode,Discrete,Write,,,,V|C,V,V = voltage control; C = current control
+save_name,Data file prefix,String,Write,,,,,Sample,No spaces
+CountA,Loop counter,Analog,Variable,1000,0,,,1,For/Next index
+avg_now,Running average scratch value,Analog,Variable,,,,,0,Used in $expressions

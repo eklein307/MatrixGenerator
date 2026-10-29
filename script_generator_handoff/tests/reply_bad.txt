@@ -1,0 +1,13 @@
+Sure! Here is the script:
+```json
+{"script_name":"Bad Test","notes":[],
+ "pretest":[{"type":"Update","fields":[["Duration",2],["temp_fb",20],["heater_on","ON"]]}],
+ "matrix":{"tags":["temp_sp","valve_1","flow_sp"],"rows":[
+   {"comment":"start","duration":10,"values":{"temp_sp":60,"flow_sp":6}},
+   {"comment":"hold","duration":60,"poststep":"Wait stable","values":{"valve_1":"MAYBE"}}]},
+ "poststeps":[{"name":"Wait for stable","steps":[
+   {"type":"Ramp","fields":[["Duration",10],["valve_1","ON"]]},
+   {"type":"For","fields":[["For","CountA"],["=",1],["To",5]]},
+   {"type":"Wait Til","fields":[["Duration",60],["temp_fb",59]]}]}],
+ "posttest":[]}
+```

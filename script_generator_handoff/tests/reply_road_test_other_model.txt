@@ -1,0 +1,259 @@
+{
+"script_name": "road test",
+"notes": [
+"Assumed a standard 50 cm2 active area for translating current/voltage into typical load points, though the load bank directly controls LB_CURRENT_DENSITY_SP.",
+"Ensured LB_ENBL is only turned ON after ANODE_FLOW_REQ and CATHODE_FLOW_REQ are set above 0 per tag rules.",
+"TEMP_CELL_SP is ramped during the startup phase at a rate slower than the maximum 2 degC/min limit (from 25 to 65 degC over 1200 seconds).",
+"Simulated drive cycle includes cruise, acceleration peak, deceleration/idle phases, and a dynamic loop using CountA."
+],
+"pretest": [
+{
+"type": "Update",
+"fields": [
+["Duration", 0],
+["MATRIX_COMMENT", "Initializing safety limits and initial set points"]
+],
+"comment": "Initialize comment"
+},
+{
+"type": "Update",
+"fields": [
+["Duration", 0],
+["ANODE_FLOW_REQ", 0.5],
+["CATHODE_FLOW_REQ", 1.5],
+["LB_MODE", "V"],
+["LB_VOLTAGE_SP", 0.9],
+["LB_CURRENT_DENSITY_SP", 0.0]
+],
+"comment": "Establish initial safe flows and voltage set point before enabling load"
+},
+{
+"type": "Update",
+"fields": [
+["Duration", 2],
+["LB_ENBL", "ON"]
+],
+"comment": "Enable load bank safely now that gas flows are active"
+},
+{
+"type": "Ramp",
+"fields": [
+["Duration", 1200],
+["TEMP_CELL_SP", 65.0]
+],
+"comment": "Warm up the fuel cell to 65 degC operating temp at 2 degC/min (40 degC change over 20 mins)"
+},
+{
+"type": "Wait Til Settled",
+"fields": [
+["MODE", "AND"],
+["Duration", 300],
+["Condition", "Stable"],
+["Tag Value", "TEMP_CELL_FB"],
+["Setpoint", 65.0],
+["Range", 2.0],
+["Set Time", 30]
+],
+"comment": "Wait for cell temperature to stabilize within 2 degC of target for 30 seconds"
+}
+],
+"matrix": {
+"tags": [
+"MATRIX_COMMENT",
+"ANODE_FLOW_REQ",
+"CATHODE_FLOW_REQ",
+"LB_MODE",
+"LB_VOLTAGE_SP",
+"LB_CURRENT_DENSITY_SP"
+],
+"rows": [
+{
+"header": "Drive Cycle Phase 1: Commute Start and Low Speed Cruise"
+},
+{
+"comment": "Baseline cruise - low load",
+"duration": 60,
+"ramp": 5,
+"poststep": "check_voltages",
+"values": {
+"MATRIX_COMMENT": "Low Speed Cruise",
+"ANODE_FLOW_REQ": 0.6,
+"CATHODE_FLOW_REQ": 1.8,
+"LB_MODE": "C",
+"LB_VOLTAGE_SP": 0.9,
+"LB_CURRENT_DENSITY_SP": 0.2
+}
+},
+{
+"comment": "Acceleration onto highway - ramp up current",
+"duration": 30,
+"ramp": 10,
+"poststep": "check_voltages",
+"values": {
+"MATRIX_COMMENT": "Highway Acceleration",
+"ANODE_FLOW_REQ": 1.5,
+"CATHODE_FLOW_REQ": 3.5,
+"LB_MODE": "C",
+"LB_VOLTAGE_SP": 0.9,
+"LB_CURRENT_DENSITY_SP": 1.0
+}
+},
+{
+"header": "Drive Cycle Phase 2: Highway Cruising and High Load Peak"
+},
+{
+"comment": "High speed cruise steady state",
+"duration": 120,
+"ramp": 0,
+"poststep": "check_voltages",
+"values": {
+"MATRIX_COMMENT": "Highway Cruise",
+"ANODE_FLOW_REQ": 1.2,
+"CATHODE_FLOW_REQ": 3.0,
+"LB_MODE": "C",
+"LB_VOLTAGE_SP": 0.9,
+"LB_CURRENT_DENSITY_SP": 0.7
+}
+},
+{
+"comment": "Overtaking maneuver - Peak current load",
+"duration": 15,
+"ramp": 2,
+"poststep": "check_voltages",
+"values": {
+"MATRIX_COMMENT": "Peak Acceleration Overtake",
+"ANODE_FLOW_REQ": 1.8,
+"CATHODE_FLOW_REQ": 4.5,
+"LB_MODE": "C",
+"LB_VOLTAGE_SP": 0.9,
+"LB_CURRENT_DENSITY_SP": 1.4
+}
+},
+{
+"header": "Drive Cycle Phase 3: Deceleration and Stop-and-Go Repeat Loop"
+},
+{
+"comment": "Coast down and braking simulation",
+"duration": 45,
+"ramp": 8,
+"poststep": "check_voltages",
+"values": {
+"MATRIX_COMMENT": "Coasting / Deceleration",
+"ANODE_FLOW_REQ": 0.4,
+"CATHODE_FLOW_REQ": 1.0,
+"LB_MODE": "C",
+"LB_VOLTAGE_SP": 0.9,
+"LB_CURRENT_DENSITY_SP": 0.1
+}
+},
+{
+"loop": "For CountA = 1 to 3"
+},
+{
+"comment": "Stop-and-go transient loop: transient acceleration step",
+"duration": 20,
+"ramp": 2,
+"poststep": "check_voltages",
+"values": {
+"MATRIX_COMMENT": "Urban Stop-and-Go Acceleration Burst",
+"ANODE_FLOW_REQ": 1.0,
+"CATHODE_FLOW_REQ": 2.5,
+"LB_MODE": "C",
+"LB_VOLTAGE_SP": 0.9,
+"LB_CURRENT_DENSITY_SP": 0.6
+}
+},
+{
+"comment": "Stop-and-go transient loop: idle step",
+"duration": 20,
+"ramp": 3,
+"poststep": "check_voltages",
+"values": {
+"MATRIX_COMMENT": "Urban Stop-and-Go Idle Wait",
+"ANODE_FLOW_REQ": 0.3,
+"CATHODE_FLOW_REQ": 0.8,
+"LB_MODE": "C",
+"LB_VOLTAGE_SP": 0.9,
+"LB_CURRENT_DENSITY_SP": 0.05
+}
+},
+{
+"loop": "Next CountA"
+}
+]
+},
+"poststeps": [
+{
+"name": "check_voltages",
+"steps": [
+{
+"type": "Conditional",
+"fields": [
+["Duration", 0],
+["MODE", "AND"],
+["IF", "LB_VOLTAGE_FB"],
+["LT", 0.4],
+["THEN", ""],
+["MATRIX_COMMENT", "Warning: Low cell voltage detected during segment evaluation"]
+],
+"comment": "Check if cell voltage dips into a dangerous regime during drive cycle transients"
+}
+]
+}
+],
+"posttest": [
+{
+"type": "Update",
+"fields": [
+["Duration", 0],
+["MATRIX_COMMENT", "Drive cycle complete. Initiating safe cooldown sequence."]
+],
+"comment": "Log post-test status"
+},
+{
+"type": "Update",
+"fields": [
+["Duration", 0],
+["LB_CURRENT_DENSITY_SP", 0.0],
+["LB_MODE", "V"],
+["LB_VOLTAGE_SP", 0.9]
+],
+"comment": "Unload the cell first to prevent degradation under zero flow"
+},
+{
+"type": "Update",
+"fields": [
+["Duration", 5],
+["LB_ENBL", "OFF"]
+],
+"comment": "Disable the load bank"
+},
+{
+"type": "Ramp",
+"fields": [
+["Duration", 600],
+["TEMP_CELL_SP", 25.0]
+],
+"comment": "Cool down the cell safely to room temp at 4 degC/min max constraint"
+},
+{
+"type": "Update",
+"fields": [
+["Duration", 0],
+["ANODE_FLOW_REQ", 0.0],
+["CATHODE_FLOW_REQ", 0.0]
+],
+"comment": "Purge / shut off reactant gas flows to complete teardown safe state"
+},
+{
+"type": "Wait Til",
+"fields": [
+["MODE", "AND"],
+["Duration", 600],
+["Condition", "LE"],
+["TEMP_CELL_FB", 35.0]
+],
+"comment": "Wait until cell has safely cooled down below 35 degC before finishing execution"
+}
+]
+}

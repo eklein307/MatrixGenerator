@@ -1,0 +1,1143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test Script Generator</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1b2230; --muted: #5c6777; --border: #d8dde5;
+    --accent: #2356c4; --accent-soft: #e8eefb; --ok: #1d7a44; --okbg: #e5f3eb;
+    --bad: #b3261e; --badbg: #fbe8e6; --warn: #8a5900; --warnbg: #fff3d9;
+    --code: #eef1f5; --sec: #e9edf5; --cmt: #8590a0; --grid: #e3e7ee;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #11151c; --card: #192029; --text: #e3e8ef; --muted: #9aa5b4; --border: #2c3543;
+      --accent: #7ea4ff; --accent-soft: #1f2a40; --ok: #6fd39a; --okbg: #15301f;
+      --bad: #ff8a80; --badbg: #3a1b19; --warn: #f2c46b; --warnbg: #342910;
+      --code: #222a35; --sec: #232c3a; --cmt: #7d8899; --grid: #2a3340;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 80px; }
+  header h1 { font-size: 22px; margin: 0; }
+  header p { color: var(--muted); margin: 2px 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
+  .card h2 { font-size: 16px; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+  .card h2 .num { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 12px; }
+  .card > p.lead { color: var(--muted); margin: 0 0 12px; font-size: 14px; }
+  label { display: block; font-weight: 600; font-size: 13px; margin: 12px 0 4px; }
+  .hint { font-weight: 400; color: var(--muted); }
+  input[type=text], input[type=password], input:not([type]), textarea, select {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text); font: inherit; }
+  textarea { resize: vertical; min-height: 90px; }
+  textarea.mono { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+  .grid3 { display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 0 14px; }
+  @media (max-width: 700px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+  button, .btn { padding: 8px 15px; border-radius: 7px; border: 1px solid var(--accent); background: var(--accent); color: #fff;
+    font: inherit; font-weight: 600; cursor: pointer; display: inline-block; }
+  button.secondary, .btn.secondary { background: transparent; color: var(--accent); }
+  button.small { padding: 4px 10px; font-size: 13px; }
+  button:disabled { opacity: .45; cursor: default; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg label { margin: 0; padding: 7px 14px; cursor: pointer; font-weight: 600; font-size: 14px; color: var(--muted); }
+  .seg input { display: none; }
+  .seg input:checked + span { color: var(--accent); }
+  .seg label:has(input:checked) { background: var(--accent-soft); }
+  .file { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .file input[type=file] { font: inherit; font-size: 14px; color: var(--muted); }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12px; font-weight: 600; background: var(--code); color: var(--muted); margin-right: 4px; }
+  .msg { padding: 8px 12px; border-radius: 7px; font-size: 14px; margin-top: 10px; }
+  .msg.bad { background: var(--badbg); color: var(--bad); }
+  .msg.warn { background: var(--warnbg); color: var(--warn); }
+  .msg.ok { background: var(--okbg); color: var(--ok); }
+  .msg.info { background: var(--code); color: var(--muted); }
+  .hidden { display: none !important; }
+  table.tags { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 10px; }
+  table.tags th, table.tags td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.tags th { color: var(--muted); font-weight: 600; }
+  .scroll { overflow: auto; max-height: 300px; border: 1px solid var(--border); border-radius: 8px; }
+  .sheets { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; }
+  .sheets label { font-weight: 400; margin: 0; font-size: 14px; display: flex; gap: 6px; align-items: center; }
+  .sheets a { font-size: 12px; color: var(--accent); cursor: pointer; }
+  ul.issues { list-style: none; padding: 0; margin: 8px 0 0; }
+  ul.issues li { padding: 6px 10px; border-radius: 6px; margin-bottom: 4px; font-size: 14px; cursor: pointer; }
+  ul.issues li.error { background: var(--badbg); color: var(--bad); }
+  ul.issues li.warning { background: var(--warnbg); color: var(--warn); }
+  ul.issues li b { font-weight: 700; margin-right: 6px; }
+  ul.notes { margin: 6px 0 0; padding-left: 20px; font-size: 14px; }
+  .sheetwrap { overflow: auto; max-height: 620px; border: 1px solid var(--border); border-radius: 8px; margin-top: 10px; }
+  table.sheet { border-collapse: collapse; font-size: 12.5px; font-family: ui-monospace, Consolas, monospace; }
+  table.sheet td, table.sheet th { border: 1px solid var(--grid); padding: 2px 6px; min-width: 52px; max-width: 320px; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+  table.sheet th { background: var(--code); color: var(--muted); font-weight: 600; position: sticky; top: 0; z-index: 1; }
+  table.sheet td.rn { background: var(--code); color: var(--muted); text-align: right; position: sticky; left: 0; }
+  table.sheet tr.section td:not(.rn) { background: var(--sec); font-weight: 700; }
+  table.sheet tr.cmt td:not(.rn) { color: var(--cmt); font-style: italic; }
+  table.sheet tr.err td.rn { background: var(--bad); color: #fff; }
+  table.sheet tr.wrn td.rn { background: var(--warn); color: #fff; }
+  table.sheet tr.flash td { outline: 2px solid var(--accent); }
+  table.sheet td[contenteditable]:focus { outline: 2px solid var(--accent); background: var(--card); white-space: pre-wrap; }
+  details summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var(--muted); }
+  .status { font-size: 14px; color: var(--muted); }
+  .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: s 0.8s linear infinite; vertical-align: -1px; margin-right: 6px; }
+  @keyframes s { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Test Script Generator</h1>
+    <p>Describe a test, and an AI assistant drafts the script using only your tags. The page checks every value against your limits before you download.</p>
+  </header>
+
+  <!-- 1. Connection -->
+  <section class="card">
+    <h2><span class="num">1</span>AI assistant</h2>
+    <p class="lead">Choose how this page reaches the AI model.</p>
+    <div class="seg">
+      <label><input type="radio" name="mode" value="manual" checked><span>Copy &amp; paste</span></label>
+      <label><input type="radio" name="mode" value="api"><span>LiteLLM (automatic)</span></label>
+    </div>
+    <div id="manualInfo" class="msg info">You'll copy a prompt into any chat assistant (Gemini, Claude, ChatGPT…), then paste its reply back here. No setup needed.</div>
+    <div id="apiBox" class="hidden">
+      <div class="grid3">
+        <div><label for="apiBase">LiteLLM address</label><input id="apiBase" placeholder="https://litellm.example.org"></div>
+        <div><label for="apiKey">API key <span class="hint">remembered in this browser</span></label><input id="apiKey" type="password" placeholder="sk-..."></div>
+        <div><label for="apiModel">Model</label><input id="apiModel" value="gpt-oss-120b"></div>
+      </div>
+      <div class="row"><button class="secondary small" id="forgetKey">Forget key</button></div>
+    </div>
+  </section>
+
+  <!-- 2. Tags -->
+  <section class="card">
+    <h2><span class="num">2</span>Your tags</h2>
+    <p class="lead">Upload your tag CSV (columns: Tag, Description, Type, Access, Hi, Lo, Units, Allowed, Default, Notes).</p>
+    <div class="file"><input type="file" id="tagFile" accept=".csv,text/csv"><span id="tagSummary" class="status"></span></div>
+    <div id="tagMsgs"></div>
+    <details id="tagDetails" class="hidden" style="margin-top:10px"><summary>Show tags</summary><div class="scroll"><table class="tags" id="tagTable"></table></div></details>
+  </section>
+
+  <!-- 3. Examples -->
+  <section class="card">
+    <h2><span class="num">3</span>Example scripts <span class="hint">(optional)</span></h2>
+    <p class="lead">Upload your script library (.xlsx). Tick up to 3 sheets similar to what you want; the assistant will follow their style. "Open" loads a sheet into the checker below.</p>
+    <div class="file"><input type="file" id="libFile" accept=".xlsx,.xlsm"><span id="libSummary" class="status"></span></div>
+    <div class="sheets" id="sheetList"></div>
+  </section>
+
+  <!-- 4. Request -->
+  <section class="card">
+    <h2><span class="num">4</span>Describe the test</h2>
+    <div class="grid2">
+      <div><label for="scriptName">Script name <span class="hint">becomes the sheet name</span></label><input id="scriptName" placeholder="e.g. Flow Cycling 60C"></div>
+      <div></div>
+    </div>
+    <label for="request">What should the test do?</label>
+    <textarea id="request" rows="6" placeholder="e.g. Warm the cell to 60 C with the valve open and 2 slpm flow. Once temperature is stable, cycle flow between 1 and 3 slpm five times, 2 minutes each. Then return everything to defaults."></textarea>
+    <div class="row">
+      <button id="generate">Generate script</button>
+      <span id="genStatus" class="status"></span>
+    </div>
+    <div id="genMsgs"></div>
+
+    <div id="manualPanel" class="hidden" style="margin-top:14px">
+      <label>Step A: copy this prompt into your chat assistant <span class="hint" id="promptSize"></span></label>
+      <textarea id="promptOut" class="mono" rows="8" readonly></textarea>
+      <div class="row"><button class="secondary small" id="copyPrompt">Copy prompt</button></div>
+      <label for="replyIn">Step B: paste the assistant's whole reply here</label>
+      <textarea id="replyIn" class="mono" rows="8" placeholder='{"script_name": ... }'></textarea>
+      <div class="row"><button id="checkReply">Check reply</button></div>
+    </div>
+  </section>
+
+  <!-- 5. Result -->
+  <section class="card hidden" id="resultCard">
+    <h2><span class="num">5</span>Review</h2>
+    <div id="summary"></div>
+    <div id="notesBox"></div>
+    <ul class="issues" id="issues"></ul>
+    <p class="lead" style="margin-top:12px">Click any cell to edit it; the checks re-run as you type. Blank matrix cells keep the previous value.</p>
+    <div class="sheetwrap"><table class="sheet" id="sheet"></table></div>
+    <div class="row">
+      <button id="download">Download .xlsx</button>
+      <span class="status" id="dlStatus"></span>
+    </div>
+    <label for="revision" style="margin-top:18px">Ask for changes <span class="hint">(the assistant revises the current version, including your edits)</span></label>
+    <textarea id="revision" rows="3" placeholder="e.g. Make the hold at 60 C 20 minutes and add a check that temperature is stable before cycling."></textarea>
+    <div class="row"><button class="secondary" id="revise">Request revision</button></div>
+  </section>
+</main>
+
+<script>/*SHEETJS*/</script>
+<script>
+"use strict";
+/* ============================================================
+   Utilities
+   ============================================================ */
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const lc = (s) => String(s ?? "").trim().toLowerCase();
+const isBlank = (v) => v === undefined || v === null || String(v).trim() === "";
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("tsg_" + k); return v === null ? d : v; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("tsg_" + k, v); } catch (e) {} },
+  del(k) { try { localStorage.removeItem("tsg_" + k); } catch (e) {} },
+};
+function numOrStr(v) {
+  if (typeof v === "number") return v;
+  const s = String(v ?? "").trim();
+  if (s !== "" && /^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(s)) return Number(s);
+  return String(v ?? "").replace(/[\r\n]+$/, ""); // keep leading spaces (matrix loop indentation)
+}
+
+/* ============================================================
+   State
+   ============================================================ */
+const S = {
+  tags: new Map(),        // lc name -> tag
+  tagList: [],
+  library: [],            // [{name, aoa}]
+  aoa: null,              // current sheet (array of arrays)
+  notes: [],
+  scriptName: "",
+  history: [],            // API chat messages
+};
+
+/* ============================================================
+   Tag CSV
+   ============================================================ */
+function parseCSV(text) {
+  const rows = []; let row = [], f = "", q = false;
+  text = text.replace(/^﻿/, "");
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; }
+      else f += c;
+    } else if (c === '"') q = true;
+    else if (c === ",") { row.push(f); f = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(f); rows.push(row); row = []; f = "";
+    } else f += c;
+  }
+  if (f !== "" || row.length) { row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim() !== ""));
+}
+
+const COL_ALIASES = {
+  tag: ["tag", "name", "tag name", "tagname"],
+  description: ["description", "desc"],
+  type: ["type", "data type"],
+  access: ["access", "role", "rw"],
+  hi: ["hi", "high", "max", "maximum"],
+  lo: ["lo", "low", "min", "minimum"],
+  units: ["units", "unit"],
+  allowed: ["allowed", "allowed values", "allowed_values", "states", "values"],
+  default: ["default", "default value"],
+  notes: ["notes", "note", "rules"],
+};
+
+function loadTags(text) {
+  const rows = parseCSV(text);
+  const errors = [], warnings = [];
+  if (rows.length < 2) return { errors: ["The CSV has no tag rows."], warnings, tags: [] };
+  const head = rows[0].map(lc);
+  const idx = {};
+  for (const [k, al] of Object.entries(COL_ALIASES)) idx[k] = head.findIndex(h => al.includes(h));
+  if (idx.tag < 0) return { errors: ['No "Tag" column found in the header row.'], warnings, tags: [] };
+  if (idx.type < 0) errors.push('No "Type" column found.');
+  if (idx.access < 0) warnings.push('No "Access" column: all tags are treated as Write. Add Access (Write / Read / Variable) so feedback tags are never set.');
+  const get = (r, k) => idx[k] >= 0 ? String(r[idx[k]] ?? "").trim() : "";
+  const tags = [], seen = new Set();
+  rows.slice(1).forEach((r, i) => {
+    const line = i + 2;
+    const name = get(r, "tag");
+    if (!name) return;
+    if (seen.has(lc(name))) { errors.push(`Line ${line}: tag "${name}" is listed twice.`); return; }
+    seen.add(lc(name));
+    const typeRaw = lc(get(r, "type"));
+    const type = typeRaw.startsWith("a") ? "Analog" : typeRaw.startsWith("d") ? "Discrete" : typeRaw.startsWith("s") ? "String" : null;
+    if (!type) errors.push(`Line ${line}: "${name}" has type "${get(r, "type")}". Use Analog, Discrete or String.`);
+    const accRaw = lc(get(r, "access"));
+    let access = "Write";
+    if (accRaw) {
+      if (accRaw.startsWith("r") && !accRaw.includes("w")) access = "Read";
+      else if (accRaw.startsWith("v")) access = "Variable";
+      else if (accRaw.startsWith("w") || accRaw === "rw") access = "Write";
+      else errors.push(`Line ${line}: "${name}" has Access "${get(r, "access")}". Use Write, Read or Variable.`);
+    }
+    const hiS = get(r, "hi"), loS = get(r, "lo");
+    const hi = hiS === "" ? null : Number(hiS), lo = loS === "" ? null : Number(loS);
+    if (hiS !== "" && !isFinite(hi)) errors.push(`Line ${line}: "${name}" Hi "${hiS}" is not a number.`);
+    if (loS !== "" && !isFinite(lo)) errors.push(`Line ${line}: "${name}" Lo "${loS}" is not a number.`);
+    if (isFinite(hi) && isFinite(lo) && hi !== null && lo !== null && hi < lo) errors.push(`Line ${line}: "${name}" Hi (${hi}) is below Lo (${lo}).`);
+    const allowedS = get(r, "allowed");
+    const allowed = type === "Discrete" ? (allowedS ? allowedS.split("|").map(s => s.trim()).filter(Boolean) : ["ON", "OFF"]) : [];
+    const t = { name, description: get(r, "description"), type: type || "String", access, hi: isFinite(hi) ? hi : null, lo: isFinite(lo) ? lo : null,
+      units: get(r, "units"), allowed, allowedGiven: !!allowedS, default: get(r, "default"), notes: get(r, "notes") };
+    if (type === "Analog" && access === "Write" && (t.hi === null || t.lo === null)) warnings.push(`"${name}" is a writable Analog tag without both Hi and Lo, so its values can't be range-checked.`);
+    if (t.default !== "" && type) {
+      const p = checkValueAgainstTag(t, t.default, "write");
+      if (p) warnings.push(`"${name}" default: ${p}`);
+    }
+    tags.push(t);
+  });
+  return { errors, warnings, tags };
+}
+
+/* ============================================================
+   Value checking
+   ============================================================ */
+function findRefs(str) {
+  // returns {refs:[tag], unknown:[text]} for $references; matches longest known tag name
+  const refs = [], unknown = [];
+  const s = String(str);
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] !== "$") continue;
+    const rest = s.slice(i + 1);
+    let best = null;
+    for (const t of S.tagList) if (rest.toLowerCase().startsWith(t.name.toLowerCase()) && (!best || t.name.length > best.name.length)) best = t;
+    if (best) { refs.push(best); i += best.name.length; }
+    else unknown.push((rest.match(/^[^\s+*\/]+/) || [""])[0]);
+  }
+  return { refs, unknown };
+}
+const hasRef = (v) => typeof v === "string" && v.includes("$");
+
+// returns a problem string or null. mode: write | compare
+function checkValueAgainstTag(t, v, mode) {
+  if (isBlank(v)) return mode === "write" ? "no value given" : "no comparison value";
+  if (hasRef(v)) return null; // checked separately
+  if (t.type === "Analog") {
+    const n = typeof v === "number" ? v : Number(String(v).trim());
+    if (!isFinite(n)) return `"${v}" is not a number (${t.name} is Analog)`;
+    if (t.hi !== null && n > t.hi) return `${n} is above Hi limit ${t.hi}${t.units ? " " + t.units : ""}`;
+    if (t.lo !== null && n < t.lo) return `${n} is below Lo limit ${t.lo}${t.units ? " " + t.units : ""}`;
+    return null;
+  }
+  if (t.type === "Discrete") {
+    const ok = t.allowed.some(a => lc(a) === lc(v));
+    return ok ? null : `"${v}" is not an allowed state (allowed: ${t.allowed.join(", ")})`;
+  }
+  return null;
+}
+
+/* ============================================================
+   Script JSON  <->  sheet (array of arrays)
+   ============================================================ */
+const LOOP_WORDS = /^(for|next|dowhile|loop)\s/i;
+const SECTION_WORDS = ["section", "setup", "pretest", "matrix", "poststep", "posttest", "end"];
+
+function scriptToAOA(sc) {
+  const A = [];
+  const push = (...cells) => A.push(cells);
+  push("Section", "Values");
+  push("Setup", "Parameter", "Tag");
+  push();
+  const writeSteps = (steps) => {
+    (steps || []).forEach((st, i) => {
+      if (i > 0) push();
+      if (st.comment) push("//", st.comment);
+      push("", "Step Type", st.type);
+      for (const f of st.fields || []) push("", f[0], isBlank(f[1]) ? "" : f[1]);
+    });
+  };
+  push("Pretest");
+  writeSteps(sc.pretest);
+  push();
+  const m = sc.matrix || { tags: [], rows: [] };
+  const mtags = m.tags || [];
+  push("Matrix", "*Comment", "*Duration", "*Ramp", "*PostStep Script", ...mtags);
+  push("//", "Comments", "(sec)", "(sec)", "Script Name", ...mtags.map(n => {
+    const t = S.tags.get(lc(n));
+    if (!t) return "";
+    return t.units || (t.type === "Discrete" ? t.allowed.join("/") : t.type === "String" ? "string" : "");
+  }));
+  let depth = 0;
+  const ind = () => "    ".repeat(Math.max(0, depth));
+  for (const r of m.rows || []) {
+    if (r.header !== undefined) { push("//", r.header); continue; }
+    if (r.loop !== undefined) {
+      const lp = String(r.loop).trim();
+      if (/^(next|loop)\s/i.test(lp)) depth--;
+      push("", ind() + lp);
+      if (/^(for|dowhile)\s/i.test(lp)) depth++;
+      continue;
+    }
+    const vals = r.values || {};
+    const lower = {}; for (const k of Object.keys(vals)) lower[lc(k)] = vals[k];
+    push("", ind() + String(r.comment ?? "").trim(), isBlank(r.duration) ? "" : r.duration, isBlank(r.ramp) ? "" : r.ramp, r.poststep ?? "",
+      ...mtags.map(n => { const v = lower[lc(n)]; return isBlank(v) ? "" : v; }));
+  }
+  for (const ps of sc.poststeps || []) {
+    push();
+    push("PostStep", "PostStep Name", ps.name);
+    writeSteps(ps.steps);
+  }
+  push();
+  push("PostTest");
+  writeSteps(sc.posttest);
+  push();
+  push("End");
+  return A.map(r => r.map(c => (typeof c === "string" ? numOrStr(c) : c)));
+}
+
+// Parses a sheet into blocks for validation (and into script JSON for revisions/examples)
+function parseAOA(aoa) {
+  const cell = (r, c) => { const v = (aoa[r] || [])[c]; return v === undefined || v === null ? "" : v; };
+  const out = { pretest: [], posttest: [], setup: [], poststeps: [], matrix: { tags: [], rows: [], tagCols: [], row: null }, problems: [] };
+  let section = null, cur = null, block = null;
+  let mcols = null;
+  for (let r = 0; r < aoa.length; r++) {
+    const a = String(cell(r, 0)).trim(), al = lc(a);
+    const b = cell(r, 1), c = cell(r, 2);
+    if (al && al !== "//" && SECTION_WORDS.includes(al)) {
+      section = al; cur = null;
+      if (al === "pretest") block = out.pretest;
+      else if (al === "posttest") block = out.posttest;
+      else if (al === "setup") block = out.setup;
+      else if (al === "poststep") {
+        const ps = { name: String(c).trim(), steps: [], row: r };
+        out.poststeps.push(ps); block = ps.steps;
+      } else if (al === "matrix") {
+        block = null;
+        out.matrix.row = r;
+        mcols = { comment: -1, duration: -1, ramp: -1, poststep: -1, tags: [] };
+        const row = aoa[r] || [];
+        for (let k = 1; k < row.length; k++) {
+          const h = String(row[k] ?? "").trim(); if (!h) continue;
+          const hl = lc(h).replace(/^\*/, "");
+          if (hl === "comment") mcols.comment = k;
+          else if (hl === "duration") mcols.duration = k;
+          else if (hl === "ramp") mcols.ramp = k;
+          else if (hl.startsWith("poststep")) mcols.poststep = k;
+          else mcols.tags.push({ col: k, name: h });
+        }
+        out.matrix.tags = mcols.tags.map(t => t.name);
+        out.matrix.tagCols = mcols.tags;
+      } else block = null;
+      if (al === "end") break;
+      continue;
+    }
+    if (al === "//") {
+      if (section === "matrix" && !isBlank(b) && r > out.matrix.row + 1) out.matrix.rows.push({ header: String(b), row: r });
+      continue;
+    }
+    if (section === "matrix") {
+      const row = aoa[r] || [];
+      if (!row.some(x => !isBlank(x))) continue;
+      const comment = mcols.comment >= 0 ? cell(r, mcols.comment) : "";
+      const cs = String(comment).trim();
+      const indent = (String(comment).match(/^[ \t]*/) || [""])[0];
+      if (LOOP_WORDS.test(cs)) { out.matrix.rows.push({ loop: cs, indent, row: r }); continue; }
+      const values = {};
+      for (const t of mcols.tags) { const v = cell(r, t.col); if (!isBlank(v)) values[t.name] = typeof v === "string" ? v.trim() : v; }
+      out.matrix.rows.push({ comment: cs, duration: mcols.duration >= 0 ? cell(r, mcols.duration) : "", ramp: mcols.ramp >= 0 ? cell(r, mcols.ramp) : "",
+        poststep: mcols.poststep >= 0 ? String(cell(r, mcols.poststep)).trim() : "", values, indent, row: r });
+      continue;
+    }
+    if (!block) continue;
+    if (isBlank(b)) continue;
+    if (lc(b) === "step type") { cur = { type: String(c).trim(), fields: [], row: r }; block.push(cur); continue; }
+    if (lc(b) === "poststep name") continue;
+    if (!cur) { if (section !== "setup") out.problems.push({ row: r, msg: `"${b}" appears before any Step Type line` }); continue; }
+    cur.fields.push({ k: String(b).trim(), v: typeof c === "string" ? c.trim() : c, row: r });
+  }
+  return out;
+}
+
+function parsedToScript(p, name) {
+  const st = (s) => ({ type: s.type, fields: s.fields.map(f => [f.k, f.v]) });
+  return {
+    script_name: name || "",
+    pretest: p.pretest.map(st),
+    matrix: { tags: p.matrix.tags, rows: p.matrix.rows.map(r => {
+      if (r.header !== undefined) return { header: r.header };
+      if (r.loop !== undefined) return { loop: r.loop };
+      const o = { comment: String(r.comment).trim(), duration: r.duration, values: r.values };
+      if (!isBlank(r.ramp)) o.ramp = r.ramp;
+      if (r.poststep) o.poststep = r.poststep;
+      return o;
+    }) },
+    poststeps: p.poststeps.map(ps => ({ name: ps.name, steps: ps.steps.map(st) })),
+    posttest: p.posttest.map(st),
+  };
+}
+
+/* ============================================================
+   Validation
+   ============================================================ */
+const OPS_WORD = ["eq", "ne", "gt", "lt", "ge", "le"];
+const OPS_SYM = ["=", "!=", ">", "<", ">=", "<="];
+const KNOWN_TYPES = ["update", "ramp", "wait til", "wait til gt", "wait til lt", "wait til settled", "conditional", "for", "next", "dowhile", "loop",
+  "edit", "prompt", "component", "change alarm", "error filter", "view", "end time", "gc configuration", "pull gc sample", "timed gc pull",
+  "wait for all alarms", "skip if not bool", "skip if gt", "skip if gt eq"];
+
+function validate(aoa) {
+  const P = parseAOA(aoa);
+  const issues = [];
+  const add = (level, row, msg) => issues.push({ level, row, msg });
+  const E = (row, msg) => add("error", row, msg), W = (row, msg) => add("warning", row, msg);
+  P.problems.forEach(p => E(p.row, p.msg));
+
+  const tagOf = (name, row, ctx) => {
+    const t = S.tags.get(lc(name));
+    if (!t) E(row, `"${name}" is not in your tag list${ctx ? " (" + ctx + ")" : ""}`);
+    return t;
+  };
+  const checkRefs = (v, row) => {
+    if (!hasRef(v)) return;
+    const { unknown } = findRefs(v);
+    unknown.forEach(u => E(row, `"$${u}" refers to a tag that is not in your tag list`));
+  };
+  const write = (name, v, row, ctx) => {
+    const t = tagOf(name, row, ctx); checkRefs(v, row);
+    if (!t) return null;
+    if (t.access === "Read") E(row, `"${t.name}" is a Read (feedback) tag and can't be set`);
+    const p = checkValueAgainstTag(t, v, "write"); if (p) E(row, `${t.name}: ${p}`);
+    return t;
+  };
+  const compare = (name, v, row) => {
+    const t = tagOf(name, row); checkRefs(v, row);
+    if (!t) return null;
+    const p = checkValueAgainstTag(t, v, "compare"); if (p) W(row, `${t.name}: ${p}, so this condition may never be met`);
+    return t;
+  };
+  const num = (v, row, what, required) => {
+    if (isBlank(v)) { if (required) E(row, `${what} is missing`); return; }
+    if (hasRef(v)) { checkRefs(v, row); return; }
+    const n = Number(v);
+    if (!isFinite(n)) E(row, `${what} "${v}" is not a number`);
+    else if (n < 0) E(row, `${what} is negative`);
+  };
+  const isOp = (k) => OPS_WORD.includes(lc(k)) || OPS_SYM.includes(String(k).trim());
+
+  const MAX_NEST = 2;
+  function checkSteps(steps, blockName) {
+    const stack = [];
+    let maxDepth = 0;
+    const deepen = () => { maxDepth = Math.max(maxDepth, stack.length); if (stack.length === MAX_NEST + 1) W(stack[stack.length - 1].row, `${blockName} nests loops ${stack.length} deep; only ${MAX_NEST} levels are known to work on the engine`); };
+    for (const st of steps) {
+      const ty = lc(st.type), F = st.fields, row = st.row;
+      const where = `${blockName}: ${st.type || "(blank)"}`;
+      if (!KNOWN_TYPES.includes(ty)) { E(row, `${blockName}: unknown step type "${st.type}"`); continue; }
+      const field = (k) => F.find(f => lc(f.k) === k);
+      const dur = field("duration"); if (dur) num(dur.v, dur.row, "Duration");
+      if (ty === "update" || ty === "ramp") {
+        const tf = F.filter(f => lc(f.k) !== "duration");
+        if (!tf.length && (ty === "ramp" || !dur)) W(row, `${where} sets no tags`);
+        tf.forEach(f => { const t = write(f.k, f.v, f.row); if (t && ty === "ramp" && t.type !== "Analog") E(f.row, `Ramp only works on Analog tags; "${t.name}" is ${t.type}`); });
+        if (ty === "ramp" && !dur) W(row, `Ramp has no Duration, so it acts like an Update`);
+      } else if (ty === "wait til" || ty === "wait til gt" || ty === "wait til lt") {
+        let cond = ty === "wait til" ? null : ty.slice(-2), nTags = 0;
+        for (const f of F) {
+          const k = lc(f.k);
+          if (k === "duration") continue;
+          if (k === "mode") { if (!["and", "or"].includes(lc(f.v))) E(f.row, `MODE must be AND or OR, not "${f.v}"`); continue; }
+          if (k === "on failure") continue;
+          if (k === "condition") { if (!OPS_WORD.includes(lc(f.v))) E(f.row, `Condition must be EQ, NE, GT, LT, GE or LE, not "${f.v}"`); cond = lc(f.v); continue; }
+          if (!cond) E(f.row, `Wait Til needs a Condition line before "${f.k}"`);
+          const t = compare(f.k, f.v, f.row); nTags++;
+          if (t && ty !== "wait til" && t.type !== "Analog") E(f.row, `${st.type} only works on Analog tags`);
+        }
+        if (!nTags) E(row, `${where} has no tag to wait on`);
+        if (!dur || Number(dur.v) === 0) W(row, `${where} has no timeout (Duration), so it can wait forever`);
+      } else if (ty === "wait til settled") {
+        let g = null, groups = 0;
+        const close = () => { if (g) { if (!g.tag) E(g.row, "Wait Til Settled group is missing Tag Value"); if (!g.sp) E(g.row, "Wait Til Settled group is missing Setpoint"); if (!g.range) E(g.row, "Wait Til Settled group is missing Range"); } };
+        for (const f of F) {
+          const k = lc(f.k);
+          if (k === "duration" || k === "on failure") continue;
+          if (k === "mode") { if (!["and", "or"].includes(lc(f.v))) E(f.row, `MODE must be AND or OR`); continue; }
+          if (k === "condition") { close(); g = { row: f.row }; groups++; if (lc(f.v) !== "stable") W(f.row, `Wait Til Settled condition is usually "Stable"`); continue; }
+          if (!g) { g = { row: f.row }; groups++; }
+          if (k === "tag value") { g.tag = true; tagOf(f.v, f.row); }
+          else if (k === "setpoint") { g.sp = true; if (hasRef(f.v)) checkRefs(f.v, f.row); else num(f.v, f.row, "Setpoint", true); }
+          else if (k === "range") { g.range = true; num(f.v, f.row, "Range", true); }
+          else if (k === "set time") num(f.v, f.row, "Set Time", true);
+          else E(f.row, `Unexpected line "${f.k}" in Wait Til Settled`);
+        }
+        close();
+        if (!groups) E(row, "Wait Til Settled has no tag to watch");
+        if (!dur) W(row, `Wait Til Settled has no timeout (Duration)`);
+      } else if (ty === "conditional") {
+        let phase = "pre", nIf = 0, sawThen = false, mode = null;
+        for (let i = 0; i < F.length; i++) {
+          const f = F[i], k = lc(f.k);
+          if (k === "duration") continue;
+          if (k === "mode") { mode = f; if (!["and", "or"].includes(lc(f.v))) E(f.row, "MODE must be AND or OR"); continue; }
+          if (k === "if") {
+            if (phase !== "pre" && phase !== "if") E(f.row, "IF lines must come before THEN");
+            phase = "if"; nIf++;
+            const nx = F[i + 1];
+            if (!nx || !isOp(nx.k)) { E(f.row, `IF "${f.v}" must be followed by a comparison line (EQ, NE, GT, LT, GE, LE)`); tagOf(f.v, f.row); }
+            else { compare(f.v, nx.v, nx.row); i++; }
+            continue;
+          }
+          if (k === "then") { sawThen = true; phase = "then"; continue; }
+          if (k === "else") { if (!sawThen) E(f.row, "ELSE must come after THEN"); phase = "else"; continue; }
+          if (phase === "then" || phase === "else") write(f.k, f.v, f.row);
+          else E(f.row, `Unexpected line "${f.k}" in Conditional`);
+        }
+        if (!nIf) E(row, "Conditional has no IF line");
+        if (!sawThen) E(row, "Conditional has no THEN line");
+        if (!mode) W(row, "Conditional has no MODE (AND/OR)");
+      } else if (ty === "for") {
+        const f = field("for");
+        if (!f) { E(row, 'For step needs a "For" line naming the loop tag'); continue; }
+        const t = tagOf(f.v, f.row, "loop index");
+        if (t && t.access === "Read") E(f.row, `Loop index "${t.name}" is a Read tag`);
+        if (t && t.type !== "Analog") E(f.row, `Loop index "${t.name}" must be Analog`);
+        const s0 = field("="), s1 = field("to"), s2 = field("step");
+        if (!s0) E(row, 'For step needs an "=" (start value) line'); else num(s0.v, s0.row, "Start value", true);
+        if (!s1) E(row, 'For step needs a "To" (end value) line'); else num(s1.v, s1.row, "End value", true);
+        if (s2 && !hasRef(s2.v) && !isFinite(Number(s2.v))) E(s2.row, `Step "${s2.v}" is not a number`);
+        if (t && s0 && s1 && !hasRef(s0.v) && !hasRef(s1.v)) {
+          [s0, s1].forEach(x => { const p = checkValueAgainstTag(t, x.v, "write"); if (p) E(x.row, `${t.name}: ${p}`); });
+        }
+        stack.push({ kind: "for", tag: lc(f.v), name: String(f.v), row }); deepen();
+      } else if (ty === "next") {
+        const f = field("next");
+        if (!f) { E(row, 'Next step needs a "Next" line naming the loop tag'); continue; }
+        const top = stack.pop();
+        if (!top || top.kind !== "for") E(row, `Next "${f.v}" has no matching For above it in ${blockName}`);
+        else if (top.tag !== lc(f.v)) E(row, `Next "${f.v}" doesn't match the open For "${top.name}" (loops must be nested)`);
+        const wh = field("while");
+        if (wh) { const i = F.indexOf(wh); const nx = F[i + 1]; tagOf(wh.v, wh.row); if (!nx || !isOp(nx.k)) E(wh.row, "While must be followed by a condition line (=, !=, >, <, >=, <=)"); else compare(wh.v, nx.v, nx.row); }
+      } else if (ty === "dowhile") {
+        const f = field("dowhile");
+        if (!f) { E(row, 'DoWhile step needs a "DoWhile" line naming the tag'); continue; }
+        const i = F.indexOf(f), nx = F[i + 1];
+        if (!nx || !isOp(nx.k)) { E(f.row, "DoWhile must be followed by a condition line (=, !=, >, <, >=, <=)"); tagOf(f.v, f.row); }
+        else compare(f.v, nx.v, nx.row);
+        stack.push({ kind: "dowhile", tag: lc(f.v), name: String(f.v), row }); deepen();
+      } else if (ty === "loop") {
+        const f = field("loop");
+        if (!f) { E(row, 'Loop step needs a "Loop" line naming the tag'); continue; }
+        const top = stack.pop();
+        if (!top || top.kind !== "dowhile") E(row, `Loop "${f.v}" has no matching DoWhile above it in ${blockName}`);
+        else if (top.tag !== lc(f.v)) E(row, `Loop "${f.v}" doesn't match the open DoWhile "${top.name}"`);
+      } else if (ty === "edit") {
+        const tf = F.filter(f => lc(f.k) !== "prompt");
+        if (!tf.length) E(row, "Edit step lists no tags");
+        if (tf.length > 10) E(row, "Edit step allows at most 10 tags");
+        tf.forEach(f => { const t = tagOf(f.k, f.row); if (t && t.access === "Read") E(f.row, `"${t.name}" is a Read tag and can't be edited`); });
+      } else if (ty === "prompt") {
+        if (!F.some(f => ["sync", "async"].includes(lc(f.k)))) E(row, 'Prompt step needs a "sync" or "async" line with the message');
+      } else if (ty.startsWith("skip if")) {
+        F.forEach(f => compare(f.k, f.v, f.row));
+      }
+    }
+    stack.forEach(s => E(s.row, `${s.kind === "for" ? "For" : "DoWhile"} "${s.name}" in ${blockName} is never closed`));
+    return maxDepth;
+  }
+
+  checkSteps(P.pretest, "Pretest");
+  const psDepth = new Map();
+  P.poststeps.forEach(ps => psDepth.set(lc(ps.name), checkSteps(ps.steps, `PostStep "${ps.name}"`)));
+  checkSteps(P.posttest, "PostTest");
+
+  // Matrix
+  const M = P.matrix;
+  if (M.row === null) W(null, "The sheet has no Matrix section");
+  else {
+    const mt = M.tagCols.map(tc => {
+      const t = tagOf(tc.name, M.row, "matrix column");
+      if (t && t.access === "Read") E(M.row, `Matrix column "${t.name}" is a Read tag and can't be set`);
+      return t;
+    });
+    const names = new Map(P.poststeps.map(p => [lc(p.name), p]));
+    const used = new Set();
+    const stack = [];
+    let first = true;
+    const checkIndent = (r, level) => {
+      const ind = r.indent || "";
+      if (ind.includes("\t")) { W(r.row, `Comment is indented with a tab; use ${level * 4} spaces (4 per loop level)`); return; }
+      if (ind.length !== level * 4) W(r.row, level ? `Comment is inside ${level} loop level${level > 1 ? "s" : ""}, so it should start with ${level * 4} spaces (it has ${ind.length})` : `Comment starts with ${ind.length} spaces but is not inside a loop`);
+    };
+    for (const r of M.rows) {
+      if (r.header !== undefined) continue;
+      if (r.loop !== undefined) {
+        let m;
+        const word = r.loop.split(/\s/)[0];
+        const notLoop = `starts with "${word} ", which the engine reads as a loop command`;
+        const nestErr = () => { if (stack.length) E(r.row, `Matrix loops can't be nested inside another matrix loop ("${stack[stack.length - 1].kind} ${stack[stack.length - 1].name}" is still open). Put the inner loop in a PostStep and call it from a row inside the outer loop`); };
+        if (/^for\s/i.test(r.loop)) {
+          nestErr();
+          checkIndent(r, stack.length);
+          if ((m = r.loop.match(/^for\s+(.+?)\s*=\s*(\S+)\s+to\s+(\S+)(?:\s+step\s+(\S+))?\s*$/i))) {
+            const t = tagOf(m[1], r.row, "matrix loop");
+            if (t && t.access === "Read") E(r.row, `Loop index "${t.name}" is a Read tag`);
+            if (t && t.type !== "Analog") E(r.row, `Loop index "${t.name}" must be Analog`);
+            [m[2], m[3], m[4]].forEach(v => { if (v !== undefined) { if (hasRef(v)) checkRefs(v, r.row); else if (!isFinite(Number(v))) E(r.row, `"${v}" in "${r.loop}" is not a number or $tag`); } });
+            stack.push({ kind: "For", tag: lc(m[1]), name: m[1], row: r.row });
+          } else E(r.row, `Comment ${notLoop}, but it isn't a valid loop. Use "For tag = start to end" (optionally "step n"), or reword the comment`);
+        } else if (/^dowhile\s/i.test(r.loop)) {
+          nestErr();
+          checkIndent(r, stack.length);
+          if ((m = r.loop.match(/^dowhile\s+(.+?)\s*(>=|<=|!=|=|>|<)\s*(.+?)\s*$/i)) || (m = r.loop.match(/^dowhile\s+(\S+)\s+(eq|ne|gt|lt|ge|le)\s+(.+?)\s*$/i))) {
+            compare(m[1], numOrStr(m[3]), r.row);
+            stack.push({ kind: "DoWhile", tag: lc(m[1]), name: m[1], row: r.row });
+          } else E(r.row, `Comment ${notLoop}, but it isn't a valid loop. Use "DoWhile tag > value" (=, !=, >, <, >=, <=), or reword the comment`);
+        } else {
+          const want = /^next\s/i.test(r.loop) ? "For" : "DoWhile";
+          const top = stack.pop();
+          checkIndent(r, stack.length);
+          if (!(m = r.loop.match(/^(?:next|loop)\s+(.+?)\s*$/i))) E(r.row, `Comment ${notLoop}. Use "${want === "For" ? "Next" : "Loop"} tag", or reword the comment`);
+          else if (!top) E(r.row, `"${r.loop}" has no matching ${want} row above it`);
+          else if (top.kind !== want) E(r.row, `"${r.loop}" closes a ${want}, but the open loop is ${top.kind} "${top.name}"`);
+          else if (top.tag !== lc(m[1])) E(r.row, `"${r.loop}" doesn't match the open loop "${top.name}" (loops must be nested)`);
+        }
+        continue;
+      }
+      checkIndent(r, stack.length);
+      num(r.duration, r.row, "Duration", false);
+      if (isBlank(r.duration)) W(r.row, "Matrix row has no Duration");
+      if (!isBlank(r.ramp)) num(r.ramp, r.row, "Ramp", false);
+      if (r.poststep) {
+        used.add(lc(r.poststep));
+        if (!names.has(lc(r.poststep))) E(r.row, `PostStep "${r.poststep}" is not defined anywhere in the sheet`);
+        else { const total = stack.length + (psDepth.get(lc(r.poststep)) || 0); if (total > MAX_NEST) W(r.row, `Calling PostStep "${r.poststep}" here nests loops ${total} deep (matrix loop + loops in the PostStep); only ${MAX_NEST} levels are known to work on the engine`); }
+      }
+      M.tagCols.forEach((tc, i) => {
+        const v = r.values[tc.name];
+        if (isBlank(v)) return;
+        const t = mt[i]; checkRefs(v, r.row);
+        if (!t) return;
+        const p = checkValueAgainstTag(t, v, "write"); if (p) E(r.row, `${t.name}: ${p}`);
+      });
+      if (first) {
+        const missing = M.tagCols.filter(tc => isBlank(r.values[tc.name])).map(tc => tc.name);
+        if (missing.length) W(r.row, `First matrix row leaves ${missing.join(", ")} blank, so ${missing.length > 1 ? "their starting values are" : "its starting value is"} whatever was set before`);
+        first = false;
+      }
+    }
+    stack.forEach(s => E(s.row, `Matrix loop "${s.kind} ${s.name}" is never closed with a ${s.kind === "For" ? "Next" : "Loop"} row`));
+    P.poststeps.forEach(p => { if (!used.has(lc(p.name))) W(p.row, `PostStep "${p.name}" is never used by a matrix row`); });
+    const dup = new Set();
+    P.poststeps.forEach(p => { if (dup.has(lc(p.name))) E(p.row, `PostStep name "${p.name}" is used twice`); dup.add(lc(p.name)); });
+  }
+  issues.sort((a, b) => (a.level === b.level ? 0 : a.level === "error" ? -1 : 1) || ((a.row ?? -1) - (b.row ?? -1)));
+  return { issues, parsed: P };
+}
+
+/* ============================================================
+   Prompt
+   ============================================================ */
+const SYSTEM_PROMPT = `You design test scripts for a laboratory test engine. The engine runs scripts laid out as a spreadsheet; this tool converts your JSON into that spreadsheet. Respond with ONLY one JSON object in the format below: no prose, no markdown fences.
+
+OUTPUT FORMAT
+{
+  "script_name": string,
+  "notes": [string],          // assumptions you made, missing tags, anything the researcher must check
+  "pretest": [Step],          // runs once first: logging, safety limits, initial set points
+  "matrix": {
+    "tags": [string],         // tags used as matrix columns (Write or Variable tags only)
+    "rows": [MatrixRow]
+  },
+  "poststeps": [{"name": string, "steps": [Step]}],
+  "posttest": [Step]          // runs once at the end: return to a safe state
+}
+Step      = {"type": string, "fields": [[key, value], ...], "comment": string (optional)}
+MatrixRow = {"comment": string, "duration": number, "ramp": number, "poststep": string, "values": {tag: value}}
+          | {"header": string}                                        (a heading line; not executed)
+          | {"loop": "For <tag> = <start> to <end>"} ... {"loop": "Next <tag>"}          (repeat the matrix rows between them)
+          | {"loop": "DoWhile <tag> <op> <value>"} ... {"loop": "Loop <tag>"}         (op = != > < >= <=; repeat while true)
+
+HOW THE ENGINE RUNS IT
+- Pretest steps run in order, then each matrix row top to bottom, then posttest.
+- A matrix row runs in this order: (1) set its tag values (a tag left out keeps its previous value), ramping Analog values over "ramp" seconds (0 = immediate); (2) hold for "duration" seconds; (3) only after the ramp and hold have finished, run the PostStep block named in "poststep" (optional). The next row starts when the PostStep finishes.
+- So a PostStep that waits for something (Wait Til, Wait Til Settled) starts after the ramp is done; its timeout only needs to cover settling, not the ramp. To hold AFTER a condition is met, put the hold on the next row (or in the PostStep), not in this row's duration.
+- The first matrix row must set every matrix column.
+- Loops can be written either in the matrix (the "loop" rows above) or inside a PostStep (For/Next, DoWhile/Loop steps). The tool indents matrix rows inside loops automatically; do not add leading spaces.
+- Matrix loops can NOT be nested inside each other. To nest, put the inner loop in a PostStep and call that PostStep from a matrix row inside the outer matrix loop. Two loops may also be nested inside one PostStep.
+- Keep total nesting to at most 2 levels (matrix loop + PostStep loop, or 2 loops inside a PostStep). Deeper nesting is not known to work.
+- Each loop needs its own counter tag; nested loops must use different counters.
+- A normal matrix "comment" must NOT begin with the words For, Next, DoWhile or Loop followed by a space: the engine would read it as a loop command. Reword it (e.g. "Hold for 5 min", not "For 5 min hold").
+- A value may reference other tags with $ and use arithmetic, e.g. "$temp_sp", "$avg_now + $current_fb", "$avg_now / 10".
+
+STEP TYPES (keys exactly as written; "?" = optional)
+Update: ["Duration", secs]?, then [tag, value] pairs. Sets the tags at once, then pauses Duration.
+Ramp: ["Duration", secs], then [tag, value] pairs. Analog tags only; ramps linearly over Duration.
+Wait Til: ["MODE", "AND"|"OR"], ["Duration", timeout secs], ["On Failure", "Error"|"Warn"]?, ["Condition", "EQ"|"NE"|"GT"|"LT"|"GE"|"LE"], then [tag, value] pairs tested with that Condition. A later ["Condition", ...] changes the operator for the tags after it. Duration 0 or missing = wait forever.
+Wait Til Settled: ["MODE", "AND"|"OR"], ["Duration", timeout secs], then for each tag a group: ["Condition", "Stable"], ["Tag Value", feedback tag], ["Setpoint", number or "$setpoint_tag"], ["Range", allowed error], ["Set Time", secs it must stay within Range].
+Conditional: ["Duration", secs], ["MODE", "AND"|"OR"], one or more pairs of ["IF", tag] then [operator, value or "$tag"] (operator EQ NE GT LT GE LE), then ["THEN", ""] followed by [tag, value] assignments, optionally ["ELSE", ""] followed by assignments.
+For / Next: {"type": "For", "fields": [["For", tag], ["=", start], ["To", end], ["Step", increment]]} ... steps ... {"type": "Next", "fields": [["Next", tag]]}. Next may add ["While", tag], [op, value] with op = != > < >= <= to exit early. The loop tag must be a Variable or a writable Analog tag.
+DoWhile / Loop: {"type": "DoWhile", "fields": [["DoWhile", tag], [op, value]]} ... steps ... {"type": "Loop", "fields": [["Loop", tag]]}.
+Edit: ["Prompt", message], then up to 10 [tag, caption] pairs. Opens a dialog where the operator enters values.
+Prompt: ["sync" or "async", message]. Shows a message; sync waits for OK.
+Component: [component name, script name], ["Duration", secs]?, ["On Failure", "Error"]?.
+Use other step types (Change Alarm, Error Filter, View, End Time, Wait for All Alarms, GC steps, Skip if ...) only if the request asks for them.
+
+RULES
+1. Use only tags from the TAG LIST, spelled exactly. Never invent tags. If the test needs something that isn't listed, do your best without it and explain in "notes".
+2. Access: Write tags may be set. Read tags (feedbacks) may only be tested: Wait Til, Wait Til Settled, Conditional IF, While, DoWhile, and $references. Variable tags are working variables (counters, scratch values) and may be set and tested.
+3. Analog values must be numbers within Lo..Hi. Discrete values must be one of the Allowed states. String values are free text.
+4. Treat each tag's Notes as hard rules (interlocks, ramp-rate limits, ordering).
+5. Put repeated or multi-step procedures in a named PostStep and call it from a matrix row's "poststep". Every called name must exist in "poststeps". Every For/DoWhile must be closed inside the same block.
+6. All times are seconds. When a feedback tag exists, prefer Wait Til or Wait Til Settled (with a timeout) over long fixed waits.
+7. The posttest must leave the system safe; use tag Defaults unless the request says otherwise.
+8. When EXAMPLES are given, follow their style and conventions (what goes in pretest, typical durations, naming).
+9. Matrix "comment" text should describe the step in plain words.`;
+
+function tagListText() {
+  const lines = ["Tag | Type | Access | Lo | Hi | Units | Allowed | Default | Description | Notes"];
+  for (const t of S.tagList) lines.push([t.name, t.type, t.access, t.lo ?? "", t.hi ?? "", t.units, t.type === "Discrete" ? t.allowed.join("/") : "", t.default, t.description, t.notes].join(" | "));
+  return lines.join("\n");
+}
+
+function examplesText() {
+  const picked = [...document.querySelectorAll("#sheetList input:checked")].map(i => S.library[Number(i.value)]);
+  if (!picked.length) return "";
+  const LIMIT = 14000;
+  const parts = picked.map(sh => {
+    const sc = parsedToScript(parseAOA(sh.aoa), sh.name);
+    let j = JSON.stringify(sc);
+    if (j.length > LIMIT) j = j.slice(0, LIMIT) + ' ... (truncated)';
+    return `Example "${sh.name}":\n${j}`;
+  });
+  return "EXAMPLES (existing scripts from this researcher's library, shown in the output format; their tags may differ from the TAG LIST, and only TAG LIST tags may be used)\n\n" + parts.join("\n\n");
+}
+
+function buildUserPrompt() {
+  const ex = examplesText();
+  return `TAG LIST\n${tagListText()}\n\n${ex ? ex + "\n\n" : ""}REQUEST\nScript name: ${$("scriptName").value.trim() || "(choose a short name)"}\n${$("request").value.trim()}`;
+}
+
+function extractJSON(text) {
+  let s = String(text || "").trim();
+  s = s.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+  const a = s.indexOf("{"), b = s.lastIndexOf("}");
+  if (a < 0 || b < a) throw new Error("No JSON object found in the reply.");
+  const body = s.slice(a, b + 1);
+  try { return JSON.parse(body); }
+  catch (e) {
+    // tolerate trailing commas
+    try { return JSON.parse(body.replace(/,\s*([}\]])/g, "$1")); } catch (e2) { throw new Error("The reply's JSON couldn't be read: " + e.message); }
+  }
+}
+
+function normalizeScript(sc) {
+  if (!sc || typeof sc !== "object") throw new Error("The reply is not a JSON object.");
+  const fixSteps = (arr, where) => (Array.isArray(arr) ? arr : []).map((st, i) => {
+    if (!st || typeof st !== "object") throw new Error(`${where} step ${i + 1} is not an object.`);
+    let fields = st.fields;
+    if (fields && !Array.isArray(fields) && typeof fields === "object") fields = Object.entries(fields);
+    fields = (fields || []).map(f => Array.isArray(f) ? [String(f[0] ?? ""), f[1] ?? ""] : (f && typeof f === "object" ? [String(f.key ?? f.k ?? ""), f.value ?? f.v ?? ""] : [String(f), ""]));
+    return { type: String(st.type ?? st.step_type ?? ""), fields, comment: st.comment || "" };
+  });
+  const m = sc.matrix || {};
+  return {
+    script_name: String(sc.script_name || ""),
+    notes: Array.isArray(sc.notes) ? sc.notes.map(String) : sc.notes ? [String(sc.notes)] : [],
+    pretest: fixSteps(sc.pretest, "Pretest"),
+    matrix: { tags: Array.isArray(m.tags) ? m.tags.map(String) : [], rows: Array.isArray(m.rows) ? m.rows : [] },
+    poststeps: (Array.isArray(sc.poststeps) ? sc.poststeps : []).map((p, i) => ({ name: String(p.name || `PostStep ${i + 1}`), steps: fixSteps(p.steps, `PostStep "${p.name}"`) })),
+    posttest: fixSteps(sc.posttest, "PostTest"),
+  };
+}
+
+function issuesForLLM(issues) {
+  const errs = issues.filter(i => i.level === "error");
+  return errs.map(i => `- ${i.row !== null && i.row !== undefined ? "Sheet row " + (i.row + 1) + ": " : ""}${i.msg}`).join("\n");
+}
+
+/* ============================================================
+   LLM: API mode
+   ============================================================ */
+function apiBase() { return $("apiBase").value.trim().replace(/\/+$/, "").replace(/\/v1$/, ""); }
+async function callLLM(messages) {
+  const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 300000);
+  const body = { model: $("apiModel").value.trim(), messages, temperature: 0.2, max_tokens: 16000, response_format: { type: "json_object" } };
+  const go = async (b) => {
+    const res = await fetch(apiBase() + "/v1/chat/completions", { method: "POST", signal: ctrl.signal,
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + $("apiKey").value.trim() }, body: JSON.stringify(b) });
+    const text = await res.text(); let j = null; try { j = JSON.parse(text); } catch (e) {}
+    return { res, j, text };
+  };
+  try {
+    let { res, j, text } = await go(body);
+    if (!res.ok && res.status === 400 && /response_format|json/i.test(text)) { delete body.response_format; ({ res, j, text } = await go(body)); }
+    if (!res.ok) throw new Error(`LiteLLM returned HTTP ${res.status}: ${(j && (j.error?.message || j.detail)) || text.slice(0, 300)}`);
+    const content = j?.choices?.[0]?.message?.content;
+    if (!content) throw new Error("The model returned an empty reply. Try again, or use a larger model.");
+    return content;
+  } catch (e) {
+    if (e.name === "AbortError") throw new Error("The model took longer than 5 minutes to reply.");
+    if (e instanceof TypeError) throw new Error("The browser couldn't reach LiteLLM (network or CORS). Run the connection test page, or switch to Copy & paste.");
+    throw e;
+  } finally { clearTimeout(timer); }
+}
+
+/* ============================================================
+   Flow
+   ============================================================ */
+const mode = () => document.querySelector('input[name=mode]:checked').value;
+let pendingKind = "new"; // what the manual reply answers: new | fix | revise
+
+function msg(el, level, html) { el.insertAdjacentHTML("beforeend", `<div class="msg ${level}">${html}</div>`); }
+
+function preflight() {
+  $("genMsgs").innerHTML = "";
+  if (!S.tagList.length) { msg($("genMsgs"), "bad", "Upload your tag CSV first (step 2)."); return false; }
+  if (!$("request").value.trim()) { msg($("genMsgs"), "bad", "Describe the test first."); $("request").focus(); return false; }
+  if (mode() === "api" && (!apiBase() || !$("apiKey").value.trim())) { msg($("genMsgs"), "bad", "Enter the LiteLLM address and key in step 1, or switch to Copy & paste."); return false; }
+  return true;
+}
+
+function showManual(promptText, kind) {
+  pendingKind = kind;
+  $("manualPanel").classList.remove("hidden");
+  $("promptOut").value = promptText;
+  $("promptSize").textContent = `(${Math.round(promptText.length / 1000)}k characters)`;
+  $("replyIn").value = "";
+  $("manualPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function applyReply(text) {
+  const sc = normalizeScript(extractJSON(text));
+  S.notes = sc.notes;
+  S.scriptName = $("scriptName").value.trim() || sc.script_name || "Script";
+  if (!$("scriptName").value.trim() && sc.script_name) $("scriptName").value = sc.script_name;
+  S.aoa = scriptToAOA(sc);
+  return render();
+}
+
+async function generate() {
+  if (!preflight()) return;
+  const user = buildUserPrompt();
+  if (mode() === "manual") {
+    showManual(SYSTEM_PROMPT + "\n\n==========\n\n" + user, "new");
+    return;
+  }
+  S.history = [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: user }];
+  await apiRound("Drafting the script");
+}
+
+async function apiRound(label) {
+  const btns = [$("generate"), $("revise")]; btns.forEach(b => b.disabled = true);
+  const st = $("genStatus"); $("genMsgs").innerHTML = "";
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      st.innerHTML = `<span class="spin"></span>${attempt === 0 ? label : "Fixing problems the checker found (round " + attempt + ")"}…`;
+      const reply = await callLLM(S.history);
+      S.history.push({ role: "assistant", content: reply });
+      let result;
+      try { result = applyReply(reply); }
+      catch (e) {
+        if (attempt === 2) throw e;
+        S.history.push({ role: "user", content: `${e.message} Reply again with only the complete JSON object.` });
+        continue;
+      }
+      const errs = issuesForLLM(result.issues);
+      if (!errs) { st.textContent = attempt ? `Done after ${attempt} fix round${attempt > 1 ? "s" : ""}.` : "Done."; return; }
+      if (attempt === 2) { st.textContent = "The assistant couldn't fix every problem. Review the errors below and edit the cells, or ask for a revision."; return; }
+      S.history.push({ role: "user", content: `The checker found these errors in your script:\n${errs}\nFix them and reply with the complete corrected JSON object only.` });
+    }
+  } catch (e) {
+    st.textContent = ""; msg($("genMsgs"), "bad", esc(e.message));
+  } finally { btns.forEach(b => b.disabled = false); }
+}
+
+function checkManualReply() {
+  $("genMsgs").innerHTML = "";
+  try {
+    const r = applyReply($("replyIn").value);
+    const errs = issuesForLLM(r.issues);
+    if (errs) {
+      msg($("genMsgs"), "warn", `The checker found ${r.issues.filter(i => i.level === "error").length} error(s). A fix-up prompt is ready below: copy it into the same chat, then paste the new reply. Or edit the cells yourself.`);
+      showManual(`The checker found these errors in your script:\n${errs}\nFix them and reply with the complete corrected JSON object only.`, "fix");
+      $("resultCard").scrollIntoView({ behavior: "smooth" });
+    } else {
+      msg($("genMsgs"), "ok", "Reply read and checked.");
+      $("manualPanel").classList.add("hidden");
+      $("resultCard").scrollIntoView({ behavior: "smooth" });
+    }
+  } catch (e) { msg($("genMsgs"), "bad", esc(e.message) + " Make sure you pasted the whole reply."); }
+}
+
+async function revise() {
+  const ask = $("revision").value.trim();
+  if (!ask) { $("revision").focus(); return; }
+  if (!S.aoa) return;
+  const current = parsedToScript(parseAOA(S.aoa), S.scriptName);
+  current.notes = S.notes;
+  const text = `Revise the script. Here is the current version (it may include the researcher's own edits; keep them unless the request changes them):\n${JSON.stringify(current)}\n\nRequested changes:\n${ask}\n\nReply with the complete revised JSON object only.`;
+  if (mode() === "manual") {
+    const full = $("promptOut").value && pendingKind !== "new" ? text : `${SYSTEM_PROMPT}\n\n==========\n\nTAG LIST\n${tagListText()}\n\n${text}`;
+    showManual(full, "revise");
+    msg($("genMsgs"), "info", "Revision prompt ready. If you're still in the same chat as before, the short version is enough; this prompt includes everything either way.");
+    return;
+  }
+  if (!S.history.length) S.history = [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: `TAG LIST\n${tagListText()}` }];
+  S.history.push({ role: "user", content: text });
+  await apiRound("Revising");
+}
+
+/* ============================================================
+   Render result
+   ============================================================ */
+let lastIssues = [];
+function render() {
+  const res = validate(S.aoa);
+  lastIssues = res.issues;
+  $("resultCard").classList.remove("hidden");
+  const nE = res.issues.filter(i => i.level === "error").length, nW = res.issues.length - nE;
+  const P = res.parsed;
+  const nRows = P.matrix.rows.filter(r => r.header === undefined && r.loop === undefined).length;
+  $("summary").innerHTML = `<span class="pill">${nRows} matrix step${nRows === 1 ? "" : "s"}</span><span class="pill">${P.poststeps.length} PostStep block${P.poststeps.length === 1 ? "" : "s"}</span><span class="pill">${P.matrix.tags.length} matrix tag${P.matrix.tags.length === 1 ? "" : "s"}</span>` +
+    (nE ? `<div class="msg bad">${nE} error${nE > 1 ? "s" : ""} must be fixed before this script is safe to run.</div>` : `<div class="msg ok">No errors. ${nW ? nW + " warning" + (nW > 1 ? "s" : "") + " to review." : "All checks passed."}</div>`);
+  $("notesBox").innerHTML = S.notes.length ? `<div class="msg info"><b>Assistant's notes</b><ul class="notes">${S.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul></div>` : "";
+  $("issues").innerHTML = res.issues.map((i, k) => `<li class="${i.level}" data-k="${k}"><b>${i.level === "error" ? "Error" : "Warning"}</b>${i.row !== null && i.row !== undefined ? "Row " + (i.row + 1) + ": " : ""}${esc(i.msg)}</li>`).join("");
+  drawSheet(res.issues);
+  return res;
+}
+
+function colName(i) { let s = ""; i++; while (i) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
+
+function drawSheet(issues) {
+  const aoa = S.aoa;
+  const ncol = Math.max(5, ...aoa.map(r => r.length));
+  const errRows = new Set(issues.filter(i => i.level === "error").map(i => i.row));
+  const wrnRows = new Set(issues.filter(i => i.level === "warning").map(i => i.row));
+  let h = "<tr><th></th>" + Array.from({ length: ncol }, (_, c) => `<th>${colName(c)}</th>`).join("") + "</tr>";
+  aoa.forEach((row, r) => {
+    const a = lc(row[0]);
+    const cls = [SECTION_WORDS.includes(a) ? "section" : "", a === "//" ? "cmt" : "", errRows.has(r) ? "err" : wrnRows.has(r) ? "wrn" : ""].join(" ");
+    h += `<tr class="${cls}" data-r="${r}"><td class="rn">${r + 1}</td>` +
+      Array.from({ length: ncol }, (_, c) => `<td contenteditable="plaintext-only" data-c="${c}" title="${esc(row[c])}">${esc(row[c])}</td>`).join("") + "</tr>";
+  });
+  $("sheet").innerHTML = h;
+}
+
+let editTimer = null;
+$("sheet").addEventListener("input", (e) => {
+  const td = e.target.closest("td[data-c]"); if (!td) return;
+  const r = Number(td.parentElement.dataset.r), c = Number(td.dataset.c);
+  while (S.aoa[r].length <= c) S.aoa[r].push("");
+  S.aoa[r][c] = numOrStr(td.textContent);
+  td.title = td.textContent;
+  clearTimeout(editTimer);
+  editTimer = setTimeout(() => {
+    const res = validate(S.aoa); lastIssues = res.issues;
+    // light refresh: keep focus by only updating issue list + row markers
+    const active = document.activeElement;
+    const nE = res.issues.filter(i => i.level === "error").length, nW = res.issues.length - nE;
+    $("summary").querySelector(".msg").outerHTML = nE ? `<div class="msg bad">${nE} error${nE > 1 ? "s" : ""} must be fixed before this script is safe to run.</div>` : `<div class="msg ok">No errors. ${nW ? nW + " warning" + (nW > 1 ? "s" : "") + " to review." : "All checks passed."}</div>`;
+    $("issues").innerHTML = res.issues.map((i, k) => `<li class="${i.level}" data-k="${k}"><b>${i.level === "error" ? "Error" : "Warning"}</b>${i.row !== null && i.row !== undefined ? "Row " + (i.row + 1) + ": " : ""}${esc(i.msg)}</li>`).join("");
+    const errRows = new Set(res.issues.filter(i => i.level === "error").map(i => i.row));
+    const wrnRows = new Set(res.issues.filter(i => i.level === "warning").map(i => i.row));
+    document.querySelectorAll("#sheet tr[data-r]").forEach(tr => {
+      const rr = Number(tr.dataset.r);
+      tr.classList.toggle("err", errRows.has(rr)); tr.classList.toggle("wrn", !errRows.has(rr) && wrnRows.has(rr));
+    });
+    if (active) active.focus();
+  }, 400);
+});
+$("issues").addEventListener("click", (e) => {
+  const li = e.target.closest("li"); if (!li) return;
+  const it = lastIssues[Number(li.dataset.k)]; if (it == null || it.row == null) return;
+  const tr = document.querySelector(`#sheet tr[data-r="${it.row}"]`); if (!tr) return;
+  tr.scrollIntoView({ block: "center", behavior: "smooth" });
+  tr.classList.add("flash"); setTimeout(() => tr.classList.remove("flash"), 1500);
+});
+
+/* ============================================================
+   Download
+   ============================================================ */
+function safeSheetName(n) { return (String(n || "Script").replace(/[\\\/\?\*\[\]:]/g, " ").trim() || "Script").slice(0, 31); }
+$("download").addEventListener("click", () => {
+  if (!S.aoa) return;
+  const nE = lastIssues.filter(i => i.level === "error").length;
+  if (nE && !$("download").dataset.confirm) {
+    $("download").dataset.confirm = "1";
+    $("download").textContent = `Download anyway (${nE} error${nE > 1 ? "s" : ""})`;
+    $("dlStatus").textContent = "The script still has errors. Click again to download it anyway.";
+    return;
+  }
+  delete $("download").dataset.confirm;
+  $("download").textContent = "Download .xlsx"; $("dlStatus").textContent = "";
+  const name = safeSheetName($("scriptName").value.trim() || S.scriptName);
+  const data = S.aoa.map(r => r.map(c => (c === "" ? null : c)));
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  const ncol = Math.max(...S.aoa.map(r => r.length));
+  ws["!cols"] = Array.from({ length: ncol }, (_, c) => ({ wch: c === 0 ? 10 : c === 1 ? 34 : c === 4 ? 18 : 14 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, name);
+  XLSX.writeFile(wb, name.replace(/\s+/g, "_") + ".xlsx");
+  $("dlStatus").textContent = "Saved. Copy the sheet into your library workbook when you're happy with it.";
+});
+
+/* ============================================================
+   Wiring
+   ============================================================ */
+function setMode() {
+  const api = mode() === "api";
+  $("apiBox").classList.toggle("hidden", !api); $("manualInfo").classList.toggle("hidden", api);
+  if (api) $("manualPanel").classList.add("hidden");
+  store.set("mode", mode());
+}
+document.querySelectorAll("input[name=mode]").forEach(r => r.addEventListener("change", setMode));
+(function restore() {
+  const m = store.get("mode", "manual"); const el = document.querySelector(`input[name=mode][value="${m}"]`); if (el) el.checked = true;
+  $("apiBase").value = store.get("base", ""); $("apiKey").value = store.get("key", ""); $("apiModel").value = store.get("model", "gpt-oss-120b");
+  setMode();
+})();
+["apiBase", "apiKey", "apiModel"].forEach(id => $(id).addEventListener("change", () => store.set({ apiBase: "base", apiKey: "key", apiModel: "model" }[id], $(id).value.trim())));
+$("forgetKey").addEventListener("click", () => { store.del("key"); $("apiKey").value = ""; });
+
+$("tagFile").addEventListener("change", async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const { errors, warnings, tags } = loadTags(await f.text());
+  $("tagMsgs").innerHTML = "";
+  errors.forEach(m => msg($("tagMsgs"), "bad", esc(m)));
+  warnings.forEach(m => msg($("tagMsgs"), "warn", esc(m)));
+  S.tagList = tags; S.tags = new Map(tags.map(t => [lc(t.name), t]));
+  const count = (k, v) => tags.filter(t => t[k] === v).length;
+  $("tagSummary").innerHTML = tags.length ? `<span class="pill">${tags.length} tags</span><span class="pill">${count("type", "Analog")} Analog</span><span class="pill">${count("type", "Discrete")} Discrete</span><span class="pill">${count("type", "String")} String</span><span class="pill">${count("access", "Read")} Read</span><span class="pill">${count("access", "Variable")} Variable</span>` : "";
+  $("tagTable").innerHTML = "<tr><th>Tag</th><th>Type</th><th>Access</th><th>Lo</th><th>Hi</th><th>Units</th><th>Allowed</th><th>Default</th><th>Description</th><th>Notes</th></tr>" +
+    tags.map(t => `<tr><td>${esc(t.name)}</td><td>${t.type}</td><td>${t.access}</td><td>${t.lo ?? ""}</td><td>${t.hi ?? ""}</td><td>${esc(t.units)}</td><td>${esc(t.type === "Discrete" ? t.allowed.join(" | ") : "")}</td><td>${esc(t.default)}</td><td>${esc(t.description)}</td><td>${esc(t.notes)}</td></tr>`).join("");
+  $("tagDetails").classList.toggle("hidden", !tags.length);
+  if (S.aoa) render();
+});
+
+$("libFile").addEventListener("change", async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const wb = XLSX.read(await f.arrayBuffer(), { type: "array" });
+    S.library = wb.SheetNames.map(n => ({ name: n, aoa: XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: "" }) }))
+      .filter(s => s.aoa.some(r => lc(r[0]) === "matrix" || lc(r[1]) === "step type"));
+    $("libSummary").innerHTML = `<span class="pill">${S.library.length} script sheet${S.library.length === 1 ? "" : "s"} found</span>`;
+    $("sheetList").innerHTML = S.library.map((s, i) => `<label><input type="checkbox" value="${i}">${esc(s.name)} <a data-open="${i}">Open</a></label>`).join("");
+  } catch (err) { $("libSummary").textContent = "Couldn't read that file: " + err.message; }
+});
+$("sheetList").addEventListener("change", (e) => {
+  const boxes = [...document.querySelectorAll("#sheetList input:checked")];
+  if (boxes.length > 3) { e.target.checked = false; }
+});
+$("sheetList").addEventListener("click", (e) => {
+  const a = e.target.closest("a[data-open]"); if (!a) return;
+  e.preventDefault();
+  const sh = S.library[Number(a.dataset.open)];
+  S.aoa = sh.aoa.map(r => r.slice()); S.notes = []; S.scriptName = sh.name; $("scriptName").value = sh.name;
+  render(); $("resultCard").scrollIntoView({ behavior: "smooth" });
+});
+
+$("generate").addEventListener("click", generate);
+$("checkReply").addEventListener("click", checkManualReply);
+$("revise").addEventListener("click", revise);
+$("copyPrompt").addEventListener("click", async () => {
+  const t = $("promptOut").value;
+  try { await navigator.clipboard.writeText(t); }
+  catch (e) { $("promptOut").select(); try { document.execCommand("copy"); } catch (e2) {} }
+  $("copyPrompt").textContent = "Copied"; setTimeout(() => $("copyPrompt").textContent = "Copy prompt", 1500);
+});
+</script>
+</body>
+</html>

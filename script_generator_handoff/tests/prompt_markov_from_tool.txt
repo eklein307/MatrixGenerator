@@ -1,0 +1,68 @@
+You design test scripts for a laboratory test engine. The engine runs scripts laid out as a spreadsheet; this tool converts your JSON into that spreadsheet. Respond with ONLY one JSON object in the format below: no prose, no markdown fences.
+
+OUTPUT FORMAT
+{
+  "script_name": string,
+  "notes": [string],          // assumptions you made, missing tags, anything the researcher must check
+  "pretest": [Step],          // runs once first: logging, safety limits, initial set points
+  "matrix": {
+    "tags": [string],         // tags used as matrix columns (Write or Variable tags only)
+    "rows": [MatrixRow]
+  },
+  "poststeps": [{"name": string, "steps": [Step]}],
+  "posttest": [Step]          // runs once at the end: return to a safe state
+}
+Step      = {"type": string, "fields": [[key, value], ...], "comment": string (optional)}
+MatrixRow = {"comment": string, "duration": number, "ramp": number, "poststep": string, "values": {tag: value}}
+          | {"header": string}                                        (a heading line; not executed)
+          | {"loop": "For <tag> = <start> to <end>"} | {"loop": "Next <tag>"}   (repeat the matrix rows between them)
+
+HOW THE ENGINE RUNS IT
+- Pretest steps run in order, then each matrix row top to bottom, then posttest.
+- A matrix row sets its tag values (a tag left out keeps its previous value), ramping Analog values over "ramp" seconds (0 = immediate), holds for "duration" seconds, and runs the PostStep block named in "poststep" (optional).
+- The first matrix row must set every matrix column.
+- A value may reference other tags with $ and use arithmetic, e.g. "$temp_sp", "$avg_now + $current_fb", "$avg_now / 10".
+
+STEP TYPES (keys exactly as written; "?" = optional)
+Update: ["Duration", secs]?, then [tag, value] pairs. Sets the tags at once, then pauses Duration.
+Ramp: ["Duration", secs], then [tag, value] pairs. Analog tags only; ramps linearly over Duration.
+Wait Til: ["MODE", "AND"|"OR"], ["Duration", timeout secs], ["On Failure", "Error"|"Warn"]?, ["Condition", "EQ"|"NE"|"GT"|"LT"|"GE"|"LE"], then [tag, value] pairs tested with that Condition. A later ["Condition", ...] changes the operator for the tags after it. Duration 0 or missing = wait forever.
+Wait Til Settled: ["MODE", "AND"|"OR"], ["Duration", timeout secs], then for each tag a group: ["Condition", "Stable"], ["Tag Value", feedback tag], ["Setpoint", number or "$setpoint_tag"], ["Range", allowed error], ["Set Time", secs it must stay within Range].
+Conditional: ["Duration", secs], ["MODE", "AND"|"OR"], one or more pairs of ["IF", tag] then [operator, value or "$tag"] (operator EQ NE GT LT GE LE), then ["THEN", ""] followed by [tag, value] assignments, optionally ["ELSE", ""] followed by assignments.
+For / Next: {"type": "For", "fields": [["For", tag], ["=", start], ["To", end], ["Step", increment]]} ... steps ... {"type": "Next", "fields": [["Next", tag]]}. Next may add ["While", tag], [op, value] with op = != > < >= <= to exit early. The loop tag must be a Variable or a writable Analog tag.
+DoWhile / Loop: {"type": "DoWhile", "fields": [["DoWhile", tag], [op, value]]} ... steps ... {"type": "Loop", "fields": [["Loop", tag]]}.
+Edit: ["Prompt", message], then up to 10 [tag, caption] pairs. Opens a dialog where the operator enters values.
+Prompt: ["sync" or "async", message]. Shows a message; sync waits for OK.
+Component: [component name, script name], ["Duration", secs]?, ["On Failure", "Error"]?.
+Use other step types (Change Alarm, Error Filter, View, End Time, Wait for All Alarms, GC steps, Skip if ...) only if the request asks for them.
+
+RULES
+1. Use only tags from the TAG LIST, spelled exactly. Never invent tags. If the test needs something that isn't listed, do your best without it and explain in "notes".
+2. Access: Write tags may be set. Read tags (feedbacks) may only be tested: Wait Til, Wait Til Settled, Conditional IF, While, DoWhile, and $references. Variable tags are working variables (counters, scratch values) and may be set and tested.
+3. Analog values must be numbers within Lo..Hi. Discrete values must be one of the Allowed states. String values are free text.
+4. Treat each tag's Notes as hard rules (interlocks, ramp-rate limits, ordering).
+5. Put repeated or multi-step procedures in a named PostStep and call it from a matrix row's "poststep". Every called name must exist in "poststeps". Every For/DoWhile must be closed inside the same block.
+6. All times are seconds. When a feedback tag exists, prefer Wait Til or Wait Til Settled (with a timeout) over long fixed waits.
+7. The posttest must leave the system safe; use tag Defaults unless the request says otherwise.
+8. When EXAMPLES are given, follow their style and conventions (what goes in pretest, typical durations, naming).
+9. Matrix "comment" text should describe the step in plain words.
+
+==========
+
+TAG LIST
+Tag | Type | Access | Lo | Hi | Units | Allowed | Default | Description | Notes
+TEMP_CELL_SP | Analog | Write | 20 | 90 | degC |  | 25 | Cell temperature set point | Ramp no faster than 2 degC/min
+TEMP_CELL_FB | Analog | Read | 0 | 120 | degC |  |  | Measured cell temperature | Feedback for TEMP_CELL_SP
+ANODE_FLOW_REQ | Analog | Write | 0 | 2 | slpm |  | 0 | Anode H2 flow set point | 
+CATHODE_FLOW_REQ | Analog | Write | 0 | 5 | slpm |  | 0 | Cathode air flow set point | 
+LB_ENBL | Discrete | Write |  |  |  | ON/OFF | OFF | Load bank enable | Only turn ON when ANODE_FLOW_REQ and CATHODE_FLOW_REQ are above 0
+LB_MODE | Discrete | Write |  |  |  | V/C | V | Load bank control mode | V = hold voltage (LB_VOLTAGE_SP); C = hold current (LB_CURRENT_DENSITY_SP)
+LB_VOLTAGE_SP | Analog | Write | 0.3 | 1 | V |  | 0.9 | Cell voltage set point | Used when LB_MODE = V
+LB_CURRENT_DENSITY_SP | Analog | Write | 0 | 1.5 | A/cm2 |  | 0 | Current density set point | Used when LB_MODE = C
+LB_VOLTAGE_FB | Analog | Read | -0.5 | 1.2 | V |  |  | Measured cell voltage | 
+MATRIX_COMMENT | String | Write |  |  |  |  |  | Step label written to the data log | 
+CountA | Analog | Variable | 0 | 1000 |  |  | 1 | Loop counter | For/Next index
+
+REQUEST
+Script name: markov
+generate a script for startup and then simulating a drive cycle for a fuel cell car

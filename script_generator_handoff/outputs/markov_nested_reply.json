@@ -1,0 +1,550 @@
+{
+ "script_name": "markov nested",
+ "notes": [
+  "The engine has no random step, so the drive cycle is a fixed Markov-style sequence of load states (idle 0.05, low 0.2, cruise 0.4-0.5, accel 0.6-0.8, peak 1.0 A/cm2), repeated 3 times by a matrix loop on CountA. About 7.5 min per cycle, 23 min total.",
+  "Nested loop (2 levels): inside the CountA matrix loop, the 'Stop-and-go traffic' row calls the PostStep 'Stop and go', which loops 5 times on CountB (ramp to 0.3 A/cm2 in 3 s, hold 10 s, ramp to idle in 2 s, hold 8 s). Matrix loops can't be nested, so the inner loop lives in the PostStep.",
+  "Short ramps (2-8 s) on LB_CURRENT_DENSITY_SP stand in for acceleration and braking.",
+  "There is no cell-area or stoichiometry tag, so flows are fixed: 0.5/1.5 slpm H2/air during startup, 1.0/3.0 slpm during the drive cycle. That gives roughly 2.9x H2 and 3.6x air stoichiometry at 1.0 A/cm2 on a 25 cm2 cell, but only about 1.4x / 1.8x on a 50 cm2 cell. Check this against your cell area before running.",
+  "Heat-up and cool-down use 1350 s ramps (45 degC at the 2 degC/min limit).",
+  "LB_ENBL is turned ON only after both flows are above 0, and turned OFF before the flows go to 0 (LB_ENBL interlock).",
+  "Startup aborts with an error if open-circuit voltage does not reach 0.85 V within 300 s.",
+  "On the accel and peak rows, a Conditional drops the load to idle if LB_VOLTAGE_FB falls below 0.35 V."
+ ],
+ "pretest": [
+  {
+   "type": "Update",
+   "comment": "Known safe starting state",
+   "fields": [
+    [
+     "Duration",
+     2
+    ],
+    [
+     "MATRIX_COMMENT",
+     "Pretest"
+    ],
+    [
+     "LB_ENBL",
+     "OFF"
+    ],
+    [
+     "LB_MODE",
+     "V"
+    ],
+    [
+     "LB_VOLTAGE_SP",
+     0.9
+    ],
+    [
+     "LB_CURRENT_DENSITY_SP",
+     0
+    ],
+    [
+     "ANODE_FLOW_REQ",
+     0
+    ],
+    [
+     "CATHODE_FLOW_REQ",
+     0
+    ],
+    [
+     "TEMP_CELL_SP",
+     25
+    ],
+    [
+     "CountA",
+     1
+    ],
+    [
+     "CountB",
+     1
+    ]
+   ]
+  }
+ ],
+ "matrix": {
+  "tags": [
+   "MATRIX_COMMENT",
+   "TEMP_CELL_SP",
+   "ANODE_FLOW_REQ",
+   "CATHODE_FLOW_REQ",
+   "LB_ENBL",
+   "LB_MODE",
+   "LB_VOLTAGE_SP",
+   "LB_CURRENT_DENSITY_SP"
+  ],
+  "rows": [
+   {
+    "header": "Startup"
+   },
+   {
+    "comment": "Start H2 and air at open circuit, 25 C",
+    "duration": 60,
+    "ramp": 0,
+    "values": {
+     "MATRIX_COMMENT": "Startup: gas on",
+     "TEMP_CELL_SP": 25,
+     "ANODE_FLOW_REQ": 0.5,
+     "CATHODE_FLOW_REQ": 1.5,
+     "LB_ENBL": "OFF",
+     "LB_MODE": "V",
+     "LB_VOLTAGE_SP": 0.9,
+     "LB_CURRENT_DENSITY_SP": 0
+    }
+   },
+   {
+    "comment": "Heat cell to 70 C at 2 C/min, wait until stable",
+    "duration": 30,
+    "ramp": 1350,
+    "poststep": "Wait for temp stable",
+    "values": {
+     "MATRIX_COMMENT": "Startup: heat to 70C",
+     "TEMP_CELL_SP": 70
+    }
+   },
+   {
+    "comment": "Confirm open-circuit voltage before loading",
+    "duration": 10,
+    "ramp": 0,
+    "poststep": "Check OCV",
+    "values": {
+     "MATRIX_COMMENT": "Startup: OCV check"
+    }
+   },
+   {
+    "comment": "Enable load at 0.9 V",
+    "duration": 60,
+    "ramp": 0,
+    "values": {
+     "MATRIX_COMMENT": "Startup: load on 0.9V",
+     "LB_ENBL": "ON"
+    }
+   },
+   {
+    "comment": "Warm-up: ramp to 0.7 V and hold 5 min",
+    "duration": 300,
+    "ramp": 60,
+    "values": {
+     "MATRIX_COMMENT": "Startup: 0.7V warm-up",
+     "LB_VOLTAGE_SP": 0.7
+    }
+   },
+   {
+    "comment": "Raise flows for drive cycle, switch to current control at idle",
+    "duration": 30,
+    "ramp": 0,
+    "values": {
+     "MATRIX_COMMENT": "Drive: idle",
+     "ANODE_FLOW_REQ": 1.0,
+     "CATHODE_FLOW_REQ": 3.0,
+     "LB_CURRENT_DENSITY_SP": 0.05,
+     "LB_MODE": "C"
+    }
+   },
+   {
+    "header": "Drive cycle: Markov-style load sequence, 3 repeats"
+   },
+   {
+    "loop": "For CountA = 1 to 3"
+   },
+   {
+    "comment": "Idle",
+    "duration": 20,
+    "ramp": 2,
+    "values": {
+     "MATRIX_COMMENT": "Drive: idle",
+     "LB_CURRENT_DENSITY_SP": 0.05
+    }
+   },
+   {
+    "comment": "Accelerate",
+    "duration": 10,
+    "ramp": 8,
+    "poststep": "Low voltage check",
+    "values": {
+     "MATRIX_COMMENT": "Drive: accel",
+     "LB_CURRENT_DENSITY_SP": 0.6
+    }
+   },
+   {
+    "comment": "Cruise",
+    "duration": 60,
+    "ramp": 5,
+    "values": {
+     "MATRIX_COMMENT": "Drive: cruise",
+     "LB_CURRENT_DENSITY_SP": 0.4
+    }
+   },
+   {
+    "comment": "Hard acceleration",
+    "duration": 15,
+    "ramp": 6,
+    "poststep": "Low voltage check",
+    "values": {
+     "MATRIX_COMMENT": "Drive: accel",
+     "LB_CURRENT_DENSITY_SP": 0.8
+    }
+   },
+   {
+    "comment": "Cruise",
+    "duration": 45,
+    "ramp": 5,
+    "values": {
+     "MATRIX_COMMENT": "Drive: cruise",
+     "LB_CURRENT_DENSITY_SP": 0.4
+    }
+   },
+   {
+    "comment": "Brake to idle",
+    "duration": 20,
+    "ramp": 3,
+    "values": {
+     "MATRIX_COMMENT": "Drive: idle",
+     "LB_CURRENT_DENSITY_SP": 0.05
+    }
+   },
+   {
+    "comment": "Stop-and-go traffic (5 cycles, see PostStep)",
+    "duration": 5,
+    "ramp": 2,
+    "poststep": "Stop and go",
+    "values": {
+     "MATRIX_COMMENT": "Drive: stop-and-go",
+     "LB_CURRENT_DENSITY_SP": 0.05
+    }
+   },
+   {
+    "comment": "Low-speed driving",
+    "duration": 40,
+    "ramp": 3,
+    "values": {
+     "MATRIX_COMMENT": "Drive: low",
+     "LB_CURRENT_DENSITY_SP": 0.2
+    }
+   },
+   {
+    "comment": "Peak power (overtake)",
+    "duration": 10,
+    "ramp": 8,
+    "poststep": "Low voltage check",
+    "values": {
+     "MATRIX_COMMENT": "Drive: peak",
+     "LB_CURRENT_DENSITY_SP": 1.0
+    }
+   },
+   {
+    "comment": "Cruise",
+    "duration": 50,
+    "ramp": 5,
+    "values": {
+     "MATRIX_COMMENT": "Drive: cruise",
+     "LB_CURRENT_DENSITY_SP": 0.5
+    }
+   },
+   {
+    "comment": "Slow down",
+    "duration": 30,
+    "ramp": 3,
+    "values": {
+     "MATRIX_COMMENT": "Drive: low",
+     "LB_CURRENT_DENSITY_SP": 0.2
+    }
+   },
+   {
+    "comment": "Stop at idle",
+    "duration": 25,
+    "ramp": 2,
+    "values": {
+     "MATRIX_COMMENT": "Drive: idle",
+     "LB_CURRENT_DENSITY_SP": 0.05
+    }
+   },
+   {
+    "loop": "Next CountA"
+   },
+   {
+    "header": "Shutdown"
+   },
+   {
+    "comment": "Return to voltage control at 0.9 V",
+    "duration": 30,
+    "ramp": 0,
+    "values": {
+     "MATRIX_COMMENT": "Shutdown: 0.9V",
+     "LB_VOLTAGE_SP": 0.9,
+     "LB_MODE": "V"
+    }
+   },
+   {
+    "comment": "Turn off load (gases still flowing)",
+    "duration": 30,
+    "ramp": 0,
+    "values": {
+     "MATRIX_COMMENT": "Shutdown: load off",
+     "LB_ENBL": "OFF",
+     "LB_CURRENT_DENSITY_SP": 0
+    }
+   },
+   {
+    "comment": "Reduce flows and cool to 25 C at 2 C/min",
+    "duration": 30,
+    "ramp": 1350,
+    "values": {
+     "MATRIX_COMMENT": "Shutdown: cool down",
+     "ANODE_FLOW_REQ": 0.5,
+     "CATHODE_FLOW_REQ": 1.5,
+     "TEMP_CELL_SP": 25
+    }
+   },
+   {
+    "comment": "Stop gas flows",
+    "duration": 10,
+    "ramp": 0,
+    "values": {
+     "MATRIX_COMMENT": "Shutdown: gas off",
+     "ANODE_FLOW_REQ": 0,
+     "CATHODE_FLOW_REQ": 0
+    }
+   }
+  ]
+ },
+ "poststeps": [
+  {
+   "name": "Wait for temp stable",
+   "steps": [
+    {
+     "type": "Wait Til Settled",
+     "fields": [
+      [
+       "MODE",
+       "AND"
+      ],
+      [
+       "Duration",
+       2400
+      ],
+      [
+       "Condition",
+       "Stable"
+      ],
+      [
+       "Tag Value",
+       "TEMP_CELL_FB"
+      ],
+      [
+       "Setpoint",
+       "$TEMP_CELL_SP"
+      ],
+      [
+       "Range",
+       1
+      ],
+      [
+       "Set Time",
+       120
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Check OCV",
+   "steps": [
+    {
+     "type": "Wait Til",
+     "fields": [
+      [
+       "MODE",
+       "AND"
+      ],
+      [
+       "Duration",
+       300
+      ],
+      [
+       "On Failure",
+       "Error"
+      ],
+      [
+       "Condition",
+       "GE"
+      ],
+      [
+       "LB_VOLTAGE_FB",
+       0.85
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Low voltage check",
+   "steps": [
+    {
+     "type": "Conditional",
+     "fields": [
+      [
+       "Duration",
+       1
+      ],
+      [
+       "MODE",
+       "OR"
+      ],
+      [
+       "IF",
+       "LB_VOLTAGE_FB"
+      ],
+      [
+       "LT",
+       0.35
+      ],
+      [
+       "THEN",
+       ""
+      ],
+      [
+       "LB_CURRENT_DENSITY_SP",
+       0.05
+      ],
+      [
+       "MATRIX_COMMENT",
+       "Low voltage: dropped to idle"
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Stop and go",
+   "steps": [
+    {
+     "type": "For",
+     "fields": [
+      [
+       "For",
+       "CountB"
+      ],
+      [
+       "=",
+       1
+      ],
+      [
+       "To",
+       5
+      ],
+      [
+       "Step",
+       1
+      ]
+     ]
+    },
+    {
+     "type": "Ramp",
+     "fields": [
+      [
+       "Duration",
+       3
+      ],
+      [
+       "LB_CURRENT_DENSITY_SP",
+       0.3
+      ]
+     ]
+    },
+    {
+     "type": "Update",
+     "fields": [
+      [
+       "Duration",
+       10
+      ],
+      [
+       "MATRIX_COMMENT",
+       "Drive: stop-and-go move"
+      ]
+     ]
+    },
+    {
+     "type": "Ramp",
+     "fields": [
+      [
+       "Duration",
+       2
+      ],
+      [
+       "LB_CURRENT_DENSITY_SP",
+       0.05
+      ]
+     ]
+    },
+    {
+     "type": "Update",
+     "fields": [
+      [
+       "Duration",
+       8
+      ],
+      [
+       "MATRIX_COMMENT",
+       "Drive: stop-and-go stop"
+      ]
+     ]
+    },
+    {
+     "type": "Next",
+     "fields": [
+      [
+       "Next",
+       "CountB"
+      ]
+     ]
+    }
+   ]
+  }
+ ],
+ "posttest": [
+  {
+   "type": "Update",
+   "comment": "Safe state (tag defaults)",
+   "fields": [
+    [
+     "Duration",
+     2
+    ],
+    [
+     "LB_ENBL",
+     "OFF"
+    ],
+    [
+     "LB_MODE",
+     "V"
+    ],
+    [
+     "LB_VOLTAGE_SP",
+     0.9
+    ],
+    [
+     "LB_CURRENT_DENSITY_SP",
+     0
+    ],
+    [
+     "ANODE_FLOW_REQ",
+     0
+    ],
+    [
+     "CATHODE_FLOW_REQ",
+     0
+    ],
+    [
+     "TEMP_CELL_SP",
+     25
+    ],
+    [
+     "MATRIX_COMMENT",
+     "Finished"
+    ]
+   ]
+  }
+ ]
+}
